@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-09T14:56:47.814Z",
+  "at": "2026-10-09T21:39:57.509Z",
   "passed": 12,
   "checks": [
     "One integration credential publishes metrics and documents, reads data and receipts; no separate producer secret",

@@ -29,6 +29,14 @@ Open http://localhost:4332. `dev` starts web and worker together. The local data
 
 The optional demo seeds three metrics, seven days of hourly bank balances, 90 days of sales/campaign observations, and a dashboard. Its demo integrations have no credentials until an administrator issues one.
 
+## Chart gallery
+
+Run `npm run seed:charts` in local mode, then open **Metrics → Library → Chart gallery · Fictional company**. The command prints the direct dashboard URL. It adds 11 dedicated `gallery_*` metrics, 14 reusable saved queries and 32 examples covering all 31 supported chart types, numbered for visual review (including vertical and horizontal funnels at 28 and 28b). Data covers the two calendar months preceding the first seed: the dashboard shows the second month, with the first available for comparisons.
+
+The examples include sales by channel/region, bank snapshots, campaign spend/leads/orders, individual request durations, service state, team scores, a sales funnel and signed profit contributions. Everything is synthetic. The gallery integration has no credential. Rerunning keeps the same IDs and deduplicates observations; it updates only the gallery's own saved queries/views/dashboard. Existing metrics and documents remain intact.
+
+Use **Jump to chart** to find an example (the horizontal funnel is **28b** and spans the dashboard width), or hide the library to give the dashboard more room. The visualization selector offers **Funnel · vertical** and **Funnel · horizontal** directly. Hover a time chart to see values in its legend; focus it and use arrows/Home/End, or Escape to return to latest. Legends toggle visibility, **Data** shows exact values, and **Query details** preserves quality and provenance. On roomy cards, legends move beside the plot; narrow cards place them below. Dashboard layouts support up to 32 views while retaining the 20-distinct-query execution budget.
+
 ## APIs and architecture
 
 See [Integration guide](docs/integrations.md) for POST payloads, authentication, scoped queries and document publication. [Architecture](docs/architecture.md) records what was extracted, future Tower adoption and PoC limits. These files are also imported into Warehouse's own Knowledge Base. `src/client/warehouse.ts` is a small server-side client; `examples/control-tower-client.ts` illustrates a future consumer.

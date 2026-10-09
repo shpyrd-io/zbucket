@@ -1,0 +1,96 @@
+{
+  "date": "2026-10-09",
+  "checkpoint": "7f210b6",
+  "dashboardId": "01a1213e-36fb-7016-bd68-f50749388b67",
+  "url": "http://localhost:4332/metrics?workspace=studio&item=01a1213e-36fb-7016-bd68-f50749388b67",
+  "syntheticOnly": true,
+  "metrics": 11,
+  "distinctQueries": 14,
+  "panels": 32,
+  "observations": 3599,
+  "seedReplay": {
+    "accepted": 0,
+    "deduplicated": 3599
+  },
+  "allChartInputsEligible": true,
+  "queryRunMs": 180,
+  "unitTestsPassed": 100,
+  "postgresAcceptanceGroupsPassed": 12,
+  "lint": "passed",
+  "typecheck": "passed",
+  "build": "passed",
+  "browserChecks": [
+    "All 32 chart panels render without compatibility errors or page overflow",
+    "Two-column dashboard at the normal 1280px viewport",
+    "Full-width chart moves value-bearing legend beside the plot",
+    "Home and End update legend values; Escape restores latest",
+    "Legend toggle hides and restores a series",
+    "Data and Chart buttons switch between exact values and visualization",
+    "Dark theme reviewed and original light theme restored",
+    "Library collapse retains two columns",
+    "Browser console has no errors"
+  ],
+  "refinementChecks": [
+    "Number sparkline uses filled areas and preserves gaps",
+    "Pie, donut, sunburst, Pareto, waterfall, gauge, heatmaps and histogram use ink outlines with soft tonal fills",
+    "Donut value is centered on both axes",
+    "Bullet uses unmodified Shpyrd ProgressBar at 12px",
+    "State cells are 12px high with 2px gaps and preserve missing intervals",
+    "Bump lines and outlined dots share the same series ink",
+    "Vertical funnel uses connected stage widths; horizontal funnel adds curved stage areas",
+    "Funnel orientation is persisted and validated in saved views",
+    "Light and dark theme reviewed; light restored",
+    "Browser console has no warnings or errors"
+  ],
+  "spacingChecks": [
+    "Treemap labels have 4px padding; measured visible block gap is 2px",
+    "Sunburst wedges and rings have 2px gutters",
+    "Waterfall values and category labels are separated from marks; long labels wrap",
+    "Matrix displays values with a higher-contrast scale and a labeled displayed range",
+    "Dumbbell labels, plot and values occupy separate columns; missing endpoints remain absent",
+    "Histogram visible bar gap measured at 2px",
+    "Horizontal funnel spans the dashboard width and appears explicitly in the visualization selector",
+    "Horizontal funnel labels sit below bars in percentage, title, value order; values are 14px",
+    "No chart has horizontal page overflow at the 1280px review viewport"
+  ],
+  "horizontalFunnelAlignment": {
+    "labelOrder": [
+      "percentage",
+      "title",
+      "value"
+    ],
+    "valueFontPx": 14,
+    "barToLabelGapPx": 2,
+    "alignment": "center",
+    "verifiedStages": 4
+  },
+  "stateClassification": {
+    "normal": "Nonzero value at or above the threshold (1 in the gallery)",
+    "warning": "Nonzero value below the threshold",
+    "critical": "Zero or missing; missing keeps its null value and dashed border",
+    "browserCells": {
+      "normal": 85,
+      "critical": 5
+    },
+    "allMissingTest": "passed"
+  },
+  "radialSpacing": {
+    "pieVisibleGapPx": 2.000086,
+    "donutVisibleGapPx": 2.000086
+  },
+  "verticalFunnel": {
+    "alignment": "right",
+    "labelOrder": [
+      "percentage",
+      "title",
+      "value"
+    ],
+    "sides": "curved",
+    "fill": "tonal gradient",
+    "removedCopy": [
+      "of first",
+      "Ordered stage totals"
+    ]
+  },
+  "browserConsoleAfterReload": "No errors or warnings"
+}

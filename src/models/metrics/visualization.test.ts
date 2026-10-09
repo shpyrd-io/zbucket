@@ -175,3 +175,17 @@ describe("Metric chart semantics", () => {
     ).toThrow(/chart/);
   });
 });
+
+it("allows a full chart gallery without accepting unbounded dashboards", () => {
+  const viewIds=Array.from({length:33},(_,i)=>`00000000-0000-7000-8000-${String(i).padStart(12,"0")}`);
+  const dashboard=(ids:string[])=>({name:"Gallery",kind:"dashboard",visibility:"private",config:{layout:"grid",viewIds:ids}});
+  expect(()=>libraryInput(dashboard(viewIds.slice(0,32)))).not.toThrow();
+  expect(()=>libraryInput(dashboard(viewIds))).toThrow(/32/);
+});
+
+it("preserves funnel orientation and rejects invalid orientation values", () => {
+  const input=(orientation:string)=>({name:"Pipeline",kind:"view",visibility:"private",config:{queryIds:["00000000-0000-7000-8000-000000000001"],chart:{kind:"funnel",stageTotals:true,orientation}}});
+  for(const orientation of ["vertical","horizontal"])
+    expect(libraryInput(input(orientation)).config.chart?.orientation).toBe(orientation);
+  expect(()=>libraryInput(input("diagonal"))).toThrow(/orientation/);
+});

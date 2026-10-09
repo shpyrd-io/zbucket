@@ -18,16 +18,14 @@ export function MetricChartOptions({
       <label>
         Visualization
         <SelectControl
-          value={value.kind}
-          onValueChange={(kind) =>
-            onChange({ ...value, kind: kind as ChartOptions["kind"] })
-          }
+          value={value.kind === "funnel" ? `funnel_${value.orientation ?? "vertical"}` : value.kind}
+          onValueChange={kind => onChange(kind.startsWith("funnel_")
+            ? { ...value, kind: "funnel", orientation: kind === "funnel_horizontal" ? "horizontal" : "vertical" }
+            : { ...value, kind: kind as ChartOptions["kind"] })}
         >
-          {chartKinds.map((k) => (
-            <option key={k} value={k}>
-              {chartNames[k]}
-            </option>
-          ))}
+          {chartKinds.flatMap(k => k === "funnel"
+            ? [<option key="funnel_vertical" value="funnel_vertical">Funnel · vertical</option>, <option key="funnel_horizontal" value="funnel_horizontal">Funnel · horizontal</option>]
+            : [<option key={k} value={k}>{chartNames[k]}</option>])}
         </SelectControl>
       </label>
       {(["bullet", "gauge", "radar"].includes(value.kind)

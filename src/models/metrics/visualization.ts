@@ -75,6 +75,7 @@ export type ChartOptions = {
   max?: number;
   contributions?: boolean;
   stageTotals?: boolean;
+  orientation?: "vertical" | "horizontal";
   stateThreshold?: number;
 };
 export type PlotPoint = ObservationMetadata & {
@@ -320,7 +321,8 @@ export function chartIssue(d: PlotData, o: ChartOptions): string | undefined {
   if (
     !current.length ||
     (!current.some((s) => s.points.some((p) => p.value !== null)) &&
-      !valid.length)
+      !valid.length &&
+      !(k === "state" && current.some((s) => s.points.length > 0)))
   )
     return "No eligible measurements for this period.";
   if (["histogram", "box"].includes(k) && !d.distribution)

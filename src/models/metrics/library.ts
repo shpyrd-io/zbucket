@@ -104,10 +104,10 @@ export function libraryInput(input: unknown) {
     check(
       Array.isArray(ids) &&
         ids.length > 0 &&
-        ids.length <= (kind === "view" ? 5 : 12) &&
+        ids.length <= (kind === "view" ? 5 : 32) &&
         ids.every(uuid) &&
         new Set(ids).size === ids.length,
-      `Choose 1–${kind === "view" ? 5 : 12} unique ${kind === "view" ? "queries" : "views"}.`,
+      `Choose 1–${kind === "view" ? 5 : 32} unique ${kind === "view" ? "queries" : "views"}.`,
     );
     clean = { [key]: ids };
   }
@@ -131,6 +131,10 @@ export function libraryInput(input: unknown) {
         check(typeof chart[k] === "boolean", "Invalid chart confirmation.");
         c[k] = chart[k];
       }
+    if (chart.orientation !== undefined) {
+      check(chart.orientation === "vertical" || chart.orientation === "horizontal", "Choose a supported chart orientation.");
+      c.orientation = chart.orientation;
+    }
     clean.chart = c;
   } else {
     check(

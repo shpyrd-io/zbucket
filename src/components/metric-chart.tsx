@@ -7,6 +7,7 @@ import {
   type CSSProperties,
   type SVGProps,
 } from "react";
+import { axis } from "@shpyrd/ui/lib/chart";
 import { Badge } from "@shpyrd/ui/components/badge";
 import { Button } from "@shpyrd/ui/components/button";
 import {
@@ -22,13 +23,13 @@ import {
 } from "@/models/metrics/visualization";
 import {observationLabel} from '@/models/metrics/observations';
 import { Table } from "./records";
+import { MetricBullet, MetricDumbbell, MetricFunnel, MetricGauge, MetricState } from "./metric-special-charts";
 const W = 860,
   H = 300,
   L = 76,
   R = 828,
   T = 22,
   B = 246;
-const color = (id: string) => seriesColor(id);
 const dateLabel = (key: string, zone: string, short = false) =>
   /^\d{4}-\d{2}$/.test(key)
     ? key
@@ -42,6 +43,7 @@ const dateLabel = (key: string, zone: string, short = false) =>
             : {}),
         }).format(new Date(key))
       : key;
+const rowName = (r: {label: string; dimensions: Record<string,string>}) => (Object.values(r.dimensions).join(" / ") || r.label).replace(/^\d+ · /, "");
 const positive = (value: string | null) => value !== null && Number(value) > 0;
 export function MetricChart({
   data,
@@ -54,7 +56,19 @@ export function MetricChart({
 }) {
   const [hidden, setHidden] = useState<string[]>([]),
     [table, setTable] = useState(false),
-    [focus, setFocus] = useState(0);
+    [focus, setFocus] = useState<number | null>(null);
+  // Assign tones before hiding series so their colours remain stable.
+  const ids = [...new Set([...data.series.map(s => s.id), ...data.rows.map(r => r.key)])];
+  const dimension = data.dimensionOrder?.[0] ?? Object.keys(data.rows[0]?.dimensions ?? {})[0];
+  const parents = [...new Set(data.rows.map(r => r.dimensions[dimension]).filter(Boolean))];
+  const color = (key: string) => {
+    if (key === "other") return "var(--chart-5)";
+    if (["sunburst", "sankey"].includes(options.kind)) {
+      const parent = data.rows.find(r=>r.key===key)?.dimensions[dimension] ?? key;
+      if (parents.includes(parent)) return `var(--chart-${Math.min(parents.indexOf(parent)+1,5)})`;
+    }
+    return ids.includes(key) ? `var(--chart-${Math.min(ids.indexOf(key) + 1, 5)})` : seriesColor(key);
+  };
   const id = useId();
   const issue = chartIssue(data, options),
     showTable = table || options.kind === "table";
@@ -71,52 +85,14 @@ export function MetricChart({
     "stacked_area",
     "bump",
   ].includes(options.kind);
-  const frame = (contents: React.ReactNode, viewBox = `0 0 ${W} ${H}`) => (
+  const frame = (contents: React.ReactNode | ((unit: number) => React.ReactNode), viewBox = `0 0 ${W} ${H}`) => (
     <MetricPlot
       viewBox={viewBox}
       role="img"
       aria-labelledby={id}
-      tabIndex={interactive ? 0 : undefined}
-      onPointerMove={
-        interactive
-          ? (e) => {
-              const r = e.currentTarget.getBoundingClientRect();
-              setFocus(
-                Math.max(
-                  0,
-                  Math.min(
-                    keys.length - 1,
-                    Math.floor(
-                      ((((e.clientX - r.left) / r.width) * W - L) / (R - L)) *
-                        keys.length,
-                    ),
-                  ),
-                ),
-              );
-            }
-          : undefined
-      }
-      onKeyDown={
-        interactive
-          ? (e) => {
-              if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-                e.preventDefault();
-                setFocus(
-                  Math.max(
-                    0,
-                    Math.min(
-                      keys.length - 1,
-                      focus + (e.key === "ArrowLeft" ? -1 : 1),
-                    ),
-                  ),
-                );
-              }
-            }
-          : undefined
-      }
     >
-      <title id={id}>{`${data.title}. ${data.unit}. Exact values and quality are available in Data.`}</title>
-      {contents}
+      {unit => <><title id={id}>{`${data.title}. ${data.unit}. Exact values and quality are available in Data.`}</title>
+      {typeof contents === "function" ? contents(unit) : contents}</>}
     </MetricPlot>
   );
   const dataTable = (
@@ -175,7 +151,7 @@ export function MetricChart({
                 </strong>{" "}
                 <span>{s.unit}</span>
                 <p className="text-xs text-muted-foreground">{observationLabel(s,data.timezone)}</p>
-                <MiniLine series={s} />
+                <MiniLine series={s} ink={color(s.id)} />
               </div>
             ))}
         </div>
@@ -191,7 +167,7 @@ export function MetricChart({
               <Cartesian
                 data={{ ...data, series: [s] }}
                 kind="line"
-                frame={frame}
+                color={color}
               />
             </div>
           ))}
@@ -212,13 +188,19 @@ export function MetricChart({
         <Cartesian
           data={{ ...data, series }}
           kind={options.kind}
-          frame={frame}
+          color={color}
           target={options.target}
-          focus={focus}
+          focus={focus ?? undefined}
+          onFocus={setFocus}
+          allKeys={keys}
         />
       );
+    else if (options.kind === "dumbbell")
+      plot = <MetricDumbbell data={data} color={color} />;
+    else if (options.kind === "funnel")
+      plot = <MetricFunnel data={data} orientation={options.orientation} color={color} />;
     else if (
-      ["ranking", "dumbbell", "slope", "waterfall", "funnel"].includes(
+      ["ranking", "slope", "waterfall"].includes(
         options.kind,
       )
     ) {
@@ -240,13 +222,12 @@ export function MetricChart({
       );
       if (options.kind === "slope")
         plot = frame(
-          rows.map((r, i) => {
+          rows.map((r) => {
             const low = Math.min(
-                0,
                 ...rows.map((r) => Number(r.value ?? 0)),
                 ...rows.map((r) => Number(r.previous ?? 0)),
               ),
-              y = (v: number) => B - ((v - low) / (max - low)) * (B - T),
+              y = (v: number) => B - ((v - low + (max-low)*.12) / ((max - low)*1.24 || 1)) * (B - T),
               stroke = color(r.key);
             return r.value !== null &&
               r.previous !== null &&
@@ -261,11 +242,10 @@ export function MetricChart({
                   y1={y(Number(r.previous))}
                   y2={y(Number(r.value))}
                 />
-                <circle cx={220} cy={y(Number(r.previous))} r={4} />
-                <circle cx={620} cy={y(Number(r.value))} r={4} />
-                <text x={40} y={24 + i * 15} stroke="none">
-                  {r.label}: {compact(r.previous)} → {compact(r.value)}
-                </text>
+                <circle cx={220} cy={y(Number(r.previous))} r={4} fill="var(--background)" />
+                <circle cx={620} cy={y(Number(r.value))} r={4} fill={stroke} />
+                <text x={206} y={y(Number(r.previous)) - 8} textAnchor="end" stroke="none">{rowName(r)}<tspan x={206} dy={25}>{compact(r.previous)}</tspan></text>
+                <text x={634} y={y(Number(r.value)) - 8} stroke="none">{rowName(r)}<tspan x={634} dy={25}>{compact(r.value)}</tspan></text>
               </g>
             ) : null;
           }),
@@ -279,10 +259,17 @@ export function MetricChart({
           }),
           low = Math.min(0, ...steps.map((s) => s.to)),
           high = Math.max(1, ...steps.map((s) => s.to)),
-          y = (v: number) => B - ((v - low) / (high - low)) * (B - T),
           w = (R - L) / (steps.length + 1);
-        plot = frame(
-          <>
+        plot = frame(unit => {
+          const base = 340 - 46 * unit;
+          const y = (v: number) => base - ((v - low) / (high - low)) * (base - T - 20 * unit);
+          const labelLines = (name: string) => {
+            const limit = Math.max(4, Math.floor((w - 8 * unit) / (6.5 * unit))), words = name.split(" ");
+            let first = words.shift() ?? "";
+            while (words.length && first.length + words[0].length + 1 <= limit) first += " " + words.shift();
+            return [first, words.join(" ")].filter(Boolean).map(line => line.length > limit ? line.slice(0, limit - 1) + "…" : line);
+          };
+          return <>
             <line x1={L} x2={R} y1={y(0)} y2={y(0)} stroke="var(--border)" />
             {steps.map((s, i) => (
               <g key={s.r.key}>
@@ -297,13 +284,15 @@ export function MetricChart({
                   fill={
                     Number(s.r.value) >= 0 ? "var(--chart-3)" : "var(--chart-1)"
                   }
+                  fillOpacity={0.25} stroke={Number(s.r.value) >= 0 ? "var(--chart-3)" : "var(--chart-1)"} vectorEffect="non-scaling-stroke" rx={2}
                 />
-                <text x={L + i * w + w / 2} y={B + 18} textAnchor="middle">
-                  {i + 1}
+                <line x1={L + (i + 1) * w - 4} x2={L + (i + 1) * w + 4} y1={y(s.to)} y2={y(s.to)} stroke="var(--muted-foreground)" strokeDasharray="2 2" />
+                <text x={L + i * w + w / 2} y={base + 12 * unit} dominantBaseline="hanging" textAnchor="middle">
+                  {labelLines(rowName(s.r)).map((line, n) => <tspan key={n} x={L + i * w + w / 2} dy={n ? 16 * unit : 0}>{line}</tspan>)}
                 </text>
                 <text
                   x={L + i * w + w / 2}
-                  y={Math.min(y(s.from), y(s.to)) - 4}
+                  y={Math.min(y(s.from), y(s.to)) - 8 * unit}
                   textAnchor="middle"
                 >
                   {compact(s.r.value)}
@@ -315,17 +304,17 @@ export function MetricChart({
               y={Math.min(y(0), y(sum))}
               width={w - 8}
               height={Math.abs(y(sum) - y(0))}
-              fill="var(--foreground)"
+              fill="var(--chart-2)" fillOpacity={0.25} stroke="var(--chart-2)" vectorEffect="non-scaling-stroke" rx={2}
             />
             <text
               x={L + steps.length * w + w / 2}
-              y={B + 18}
+              y={base + 12 * unit} dominantBaseline="hanging"
               textAnchor="middle"
             >
               Total
             </text>
-          </>,
-        );
+          </>;
+        }, "0 0 860 340");
       } else
         plot = frame(
           rows.map((r, i) => {
@@ -344,42 +333,11 @@ export function MetricChart({
                   {prev !== null ? ` · Previous ${r.previous}` : ""}
                 </title>
                 <text x={12} y={yy + 4}>
-                  {r.label.slice(0, 38)}
+                  {rowName(r).slice(0, 20)}
                 </text>
-                {r.value !== null &&
-                  (options.kind === "dumbbell" && prev !== null ? (
-                    <>
-                      <line
-                        x1={x(prev)}
-                        x2={x(n)}
-                        y1={yy}
-                        y2={yy}
-                        stroke={color(r.key)}
-                        strokeWidth={3}
-                      />
-                      <circle
-                        cx={x(prev)}
-                        cy={yy}
-                        r={5}
-                        fill="var(--background)"
-                        stroke={color(r.key)}
-                      />
-                      <circle cx={x(n)} cy={yy} r={5} fill={color(r.key)} />
-                    </>
-                  ) : (
-                    <rect
-                      x={
-                        options.kind === "funnel"
-                          ? start + (480 - (n / max) * 480) / 2
-                          : Math.min(start, x(n))
-                      }
-                      y={yy - 10}
-                      width={(Math.abs(n) / max) * (negative ? 240 : 480)}
-                      height={20}
-                      rx={2}
-                      fill={color(r.key)}
-                    />
-                  ))}
+                {r.value !== null && <rect x={Math.min(start, x(n))} y={yy - 10}
+                  width={(Math.abs(n) / max) * (negative ? 240 : 480)} height={20} rx={2}
+                  fill={color(r.key)} fillOpacity={0.24} stroke={color(r.key)} />}
                 <text x={805} y={yy + 4} textAnchor="end">
                   {compact(r.value)}
                 </text>
@@ -409,7 +367,7 @@ export function MetricChart({
           : top,
         total = rows.reduce((v, r) => v + Number(r.value), 0);
       if (options.kind === "treemap")
-        plot = frame(
+        plot = frame(unit =>
           treeRects(
             rows.map((r, i) => ({ i, value: Number(r.value) })),
             20,
@@ -417,7 +375,9 @@ export function MetricChart({
             820,
             240,
           ).map((b) => {
-            const r = rows[b.i];
+            const r = rows[b.i], inset = 1.5 * unit, padding = 4.5 * unit;
+            const room = Math.max(0, b.w - 2 * inset - 2 * padding), chars = Math.floor(room / (7 * unit));
+            const name = rowName(r), label = name.length > chars ? name.slice(0, Math.max(0, chars - 1)) + "…" : name;
             return (
               <g key={r.key}>
                 <title>
@@ -425,16 +385,17 @@ export function MetricChart({
                   {((Number(r.value) / total) * 100).toFixed(1)}%)
                 </title>
                 <rect
-                  x={b.x}
-                  y={b.y}
-                  width={Math.max(0, b.w - 2)}
-                  height={Math.max(0, b.h - 2)}
+                  x={b.x + inset}
+                  y={b.y + inset}
+                  width={Math.max(0, b.w - 2 * inset)}
+                  height={Math.max(0, b.h - 2 * inset)}
                   fill={color(r.key)}
-                  opacity={0.8}
+                  fillOpacity={0.18}
+                  stroke={color(r.key)} strokeOpacity={0.6} vectorEffect="non-scaling-stroke" rx={3}
                 />
-                {b.w > 90 && b.h > 30 && (
-                  <text x={b.x + 8} y={b.y + 24}>
-                    {r.label.slice(0, Math.floor(b.w / 8))}
+                {chars >= 3 && b.h > 2 * inset + 2 * padding + 12 * unit && (
+                  <text x={b.x + inset + padding} y={b.y + inset + padding} dominantBaseline="hanging" style={{fontSize:12 * unit}}>
+                    {label}
                   </text>
                 )}
               </g>
@@ -463,7 +424,7 @@ export function MetricChart({
                     width={w * 0.7}
                     height={(Number(r.value) / Number(all[0].value)) * (B - T)}
                     fill={color(r.key)}
-                    opacity={0.65}
+                    fillOpacity={0.25} stroke={color(r.key)} vectorEffect="non-scaling-stroke" rx={2}
                   />
                   {i > 0 && (
                     <line
@@ -471,10 +432,10 @@ export function MetricChart({
                       x2={x}
                       y1={B - before * (B - T)}
                       y2={y}
-                      stroke="var(--foreground)"
+                      stroke="var(--chart-4)" strokeWidth={1.5} vectorEffect="non-scaling-stroke"
                     />
                   )}
-                  <circle cx={x} cy={y} r={3} fill="var(--foreground)" />
+                  <circle cx={x} cy={y} r={3} fill="color-mix(in oklch, var(--chart-4) 25%, var(--background))" stroke="var(--chart-4)" vectorEffect="non-scaling-stroke" />
                 </g>
               );
             })}
@@ -487,7 +448,6 @@ export function MetricChart({
           </>,
         );
       } else {
-        let angle = -Math.PI / 2;
         const polar = (a: number, r: number) => [
           260 + Math.cos(a) * r,
           140 + Math.sin(a) * r,
@@ -497,17 +457,23 @@ export function MetricChart({
           to: number,
           outer: number,
           inner: number,
+          inset = 0,
         ) => {
-          const a = polar(from, outer),
-            b = polar(to - 0.000001, outer),
-            c = polar(to - 0.000001, inner),
-            d = polar(from, inner);
-          return `M${a}A${outer},${outer} 0 ${to - from > Math.PI ? 1 : 0} 1 ${b}L${c}${inner ? `A${inner},${inner} 0 ${to - from > Math.PI ? 1 : 0} 0 ${d}` : ""}Z`;
+          // Inset both radial edges; with a 1px outline, 1.5px per side leaves a 2px gutter.
+          // Clamp for very small slices so their edges cannot cross.
+          inset = to - from >= Math.PI * 2 - 0.000001 ? 0 : Math.min(inset, (inner || outer) * Math.sin(Math.min((to - from) * .45, Math.PI / 2)));
+          const offset = (radius: number) => Math.asin(Math.min(1, inset / radius));
+          const out = inset ? offset(outer) : 0, inn = inset && inner ? offset(inner) : 0;
+          const a = polar(from + out, outer), b = polar(to - out - 0.000001, outer),
+            c = inner ? polar(to - inn - 0.000001, inner) : polar((from + to) / 2, inset ? inset / Math.sin((to - from) / 2) : 0),
+            d = polar(from + inn, inner);
+          return `M${a}A${outer},${outer} 0 ${to - from - 2 * out > Math.PI ? 1 : 0} 1 ${b}L${c}${inner ? `A${inner},${inner} 0 ${to - from - 2 * inn > Math.PI ? 1 : 0} 0 ${d}` : ""}Z`;
         };
         plot = (
           <div className="metric-chart-radial">
-            {frame(
-              <>
+            {frame(unit => {
+              let angle = -Math.PI / 2;
+              return <>
                 {(options.kind === "sunburst"
                   ? [...all].sort((a, b) =>
                       a.dimensions[
@@ -532,12 +498,13 @@ export function MetricChart({
                         options.kind === "pie"
                           ? 0
                           : options.kind === "sunburst"
-                            ? 75
+                            ? 75 + 1.5 * unit
                             : 65,
+                        1.5 * unit,
                       )}
-                      fill={color(r.key)}
-                      stroke="var(--background)"
-                      strokeWidth={2}
+                      fill={color(r.key)} fillOpacity={0.25}
+                      stroke={color(r.key)}
+                      strokeWidth={1} vectorEffect="non-scaling-stroke"
                     >
                       <title>
                         {r.label}: {r.value} ·{" "}
@@ -571,9 +538,9 @@ export function MetricChart({
                       return (
                         <path
                           key={name}
-                          d={wedge(from, a, 74, 32)}
-                          fill={color(name)}
-                          stroke="var(--background)"
+                          d={wedge(from, a, 75 - 1.5 * unit, 32, 1.5 * unit)}
+                          fill={color(name)} fillOpacity={0.35}
+                          stroke={color(name)} vectorEffect="non-scaling-stroke"
                         >
                           <title>
                             {name}: {compact(v)}
@@ -583,19 +550,19 @@ export function MetricChart({
                     });
                   })()}
                 {options.kind === "donut" && (
-                  <text x={260} y={145} textAnchor="middle">
+                  <text className="metric-donut-value" x={260} y={140} textAnchor="middle" dominantBaseline="central">
                     {compact(decimalSum(rows.map((r) => r.value!)))}
                   </text>
                 )}
-              </>,
-              "130 10 260 260",
+              </>;
+            }, "130 10 260 260",
             )}
             <ul className="metric-chart-radial-legend" aria-label="Chart legend">
-              {rows.map((r) => (
+              {(options.kind === "sunburst" ? parents.map(parent=>({key:parent,label:parent,dimensions:{[dimension]:parent},value:decimalSum(all.filter(r=>r.dimensions[dimension]===parent).map(r=>r.value!))})) : rows).map((r) => (
                 <li key={r.key}>
-                  <i style={{ background: color(r.key) }} aria-hidden="true" />
-                  <span>{r.label}</span>
-                  <strong>{((Number(r.value) / total) * 100).toFixed(1)}%</strong>
+                  <i className="metric-legend-ink" style={{ "--ink": color(r.key) } as CSSProperties} aria-hidden="true" />
+                  <span className="metric-legend-content"><span className="metric-legend-name" title={r.label}>{Object.values(r.dimensions).join(" / ") || r.label}</span>
+                  <strong title={`${r.value} ${data.unit}`}>{compact(r.value)} <small>{((Number(r.value) / total) * 100).toFixed(1)}%</small></strong></span>
                 </li>
               ))}
             </ul>
@@ -603,89 +570,7 @@ export function MetricChart({
         );
       }
     } else if (["bullet", "gauge"].includes(options.kind)) {
-      const value = Number(series[0]?.total ?? 0),
-        min = options.min ?? 0,
-        max = options.max ?? 1,
-        fraction = (v: number) =>
-          Math.max(0, Math.min(1, (v - min) / (max - min))),
-        at = fraction(value),
-        goal = fraction(options.target ?? 0);
-      plot =
-        options.kind === "bullet"
-          ? frame(
-              <>
-                <rect
-                  x={L}
-                  y={90}
-                  width={R - L}
-                  height={50}
-                  rx={3}
-                  fill="var(--muted)"
-                />
-                <rect
-                  x={L}
-                  y={103}
-                  width={(R - L) * at}
-                  height={24}
-                  rx={2}
-                  fill="var(--chart-1)"
-                />
-                <line
-                  x1={L + (R - L) * goal}
-                  x2={L + (R - L) * goal}
-                  y1={80}
-                  y2={150}
-                  stroke="var(--foreground)"
-                  strokeWidth={3}
-                />
-                <text x={L} y={180}>
-                  {compact(min)}
-                </text>
-                <text x={R} y={180} textAnchor="end">
-                  {compact(max)}
-                </text>
-                <text x={L} y={55}>
-                  {compact(series[0]?.total)} {data.unit} · Target{" "}
-                  {options.target}
-                </text>
-              </>,
-            )
-          : frame(
-              <>
-                <path
-                  d="M260,210 A170,170 0 0 1 600,210"
-                  fill="none"
-                  stroke="var(--muted)"
-                  strokeWidth={22}
-                />
-                <path
-                  d="M260,210 A170,170 0 0 1 600,210"
-                  fill="none"
-                  stroke="var(--chart-1)"
-                  strokeWidth={22}
-                  pathLength={100}
-                  strokeDasharray={`${at * 100} 100`}
-                />
-                <text
-                  x={430}
-                  y={185}
-                  textAnchor="middle"
-                  style={{ fontSize: 32 }}
-                >
-                  {compact(series[0]?.total)}
-                </text>
-                <text x={260} y={250}>
-                  {min}
-                </text>
-                <text x={600} y={250} textAnchor="end">
-                  {max}
-                </text>
-                <text x={430} y={280} textAnchor="middle">
-                  {data.unit} · Target {options.target} (
-                  {(goal * 100).toFixed(0)}% of scale)
-                </text>
-              </>,
-            );
+      plot = options.kind === "bullet" ? <MetricBullet data={data} options={options} /> : <MetricGauge data={data} options={options} />;
     } else if (["scatter", "bubble"].includes(options.kind)) {
       const sources = data.sources;
       const xSeries = sources?.[0]?.series[0] ?? series[0],
@@ -811,8 +696,10 @@ export function MetricChart({
                         style={{
                           background:
                             p?.value != null
-                              ? `color-mix(in srgb, var(--chart-1) ${15 + (Math.abs(Number(p.value)) / max) * 75}%, var(--background))`
-                              : "var(--muted)",
+                              ? `color-mix(in srgb, var(--chart-1) ${8 + (Math.abs(Number(p.value)) / max) * 22}%, var(--background))`
+                              : "transparent",
+                          borderColor: p?.value != null ? "var(--chart-1)" : "var(--border)",
+                          borderStyle: p?.value != null ? "solid" : "dashed",
                         }}
                       >
                         {i + 1}
@@ -829,35 +716,33 @@ export function MetricChart({
       const rows = data.rows,
         keys = data.dimensionOrder ?? Object.keys(rows[0]?.dimensions ?? {}),
         xs = [...new Set(rows.map((r) => r.dimensions[keys[0]]))],
-        ys = [...new Set(rows.map((r) => r.dimensions[keys[1]]))],
-        max = Math.max(1, ...rows.map((r) => Math.abs(Number(r.value ?? 0))));
+        ys = [...new Set(rows.map((r) => r.dimensions[keys[1]]))];
       if (xs.length > 50 || ys.length > 50)
         plot = <p>Filter dimensions to at most 50 values per axis.</p>;
-      else if (options.kind === "matrix")
-        plot = frame(
-          <>
+      else if (options.kind === "matrix") {
+        const values = rows.filter(r => r.value !== null).map(r => Number(r.value));
+        const low = values.length ? Math.min(...values) : 0, high = values.length ? Math.max(...values) : 0;
+        const tint = (v: number) => 0.1 + (high === low ? .5 : (v - low) / (high - low)) * .55;
+        plot = <div className="metric-matrix">{frame(unit => <>
+
             {rows.map((r) => {
               const x = xs.indexOf(r.dimensions[keys[0]]),
                 y = ys.indexOf(r.dimensions[keys[1]]);
-              return (
-                <rect
-                  key={r.key}
+              return <g key={r.key}><rect
                   x={160 + (x * 640) / xs.length}
                   y={30 + (y * 210) / ys.length}
-                  width={640 / xs.length - 2}
-                  height={210 / ys.length - 2}
+                  width={640 / xs.length - 4}
+                  height={210 / ys.length - 4} rx={3}
                   fill={r.value === null ? "var(--muted)" : "var(--chart-1)"}
-                  opacity={
-                    r.value === null
-                      ? 1
-                      : 0.1 + (Math.abs(Number(r.value)) / max) * 0.9
-                  }
+                  fillOpacity={r.value === null ? 0 : tint(Number(r.value))}
+                  stroke={r.value === null ? "var(--border)" : "var(--chart-1)"} strokeDasharray={r.value === null ? "3 3" : undefined} vectorEffect="non-scaling-stroke"
                 >
                   <title>
                     {r.label}: {r.value ?? "Unavailable"}
                   </title>
                 </rect>
-              );
+                {xs.length <= 8 && ys.length <= 8 && <text x={160 + ((x + .5) * 640) / xs.length - 2} y={30 + ((y + .5) * 210) / ys.length - 2} dominantBaseline="central" textAnchor="middle" style={{fontSize:11 * unit}}>{compact(r.value)}</text>}
+              </g>;
             })}
             {ys.map((y, i) => (
               <text
@@ -879,8 +764,8 @@ export function MetricChart({
                 {x.slice(0, 12)}
               </text>
             ))}
-          </>,
-        );
+          </>)}<div className="metric-matrix-scale">{values.length ? <><span>Displayed range</span><span>{compact(low)}</span><i aria-hidden="true" /><span>{compact(high)}</span><span>{data.unit}</span></> : "No measured cells"}</div></div>;
+      }
       else {
         const total = rows.reduce((v, r) => v + Number(r.value), 0),
           positions = (labels: string[], key: string) => {
@@ -965,7 +850,7 @@ export function MetricChart({
           max = Number(d.max),
           x = (v: string) =>
             L + ((Number(v) - min) / (max - min || 1)) * (R - L);
-        plot = frame(
+        plot = frame(unit =>
           options.kind === "box" ? (
             <>
               <line
@@ -1016,11 +901,11 @@ export function MetricChart({
                 return (
                   <rect
                     key={i}
-                    x={L + i * width}
+                    x={L + i * width + 1.5 * unit}
                     y={B - height}
-                    width={Math.max(1, width - 2)}
+                    width={Math.max(0, width - 3 * unit)}
                     height={height}
-                    fill="var(--chart-1)"
+                    fill="var(--chart-1)" fillOpacity={0.25} stroke="var(--chart-1)" vectorEffect="non-scaling-stroke" rx={2}
                   >
                     <title>
                       {b.from}–{b.to}: {b.count} observations
@@ -1029,7 +914,8 @@ export function MetricChart({
                 );
               })}
               <text x={L} y={280}>
-                {d.min} — {d.max} {data.unit} · {d.count} observations
+                <title>{d.min} — {d.max} {data.unit}</title>
+                {compact(d.min)} — {compact(d.max)} {data.unit} · {d.count} observations
               </text>
             </>
           ),
@@ -1075,180 +961,65 @@ export function MetricChart({
           {rows.map((r, i) => {
             const [x, y] = point(i, 1.22);
             return (
-              <text key={r.key} x={x} y={y} textAnchor="middle">
-                {r.label.slice(0, 26)}
+              <text key={r.key} x={x} y={y} textAnchor={x<420?"end":x>440?"start":"middle"}>
+                {rowName(r).slice(0, 16)}
               </text>
             );
           })}
-          <text x={20} y={280}>
-            Normalized range {options.min}–{options.max}; values outside range
-            are clipped.
-          </text>
+          <text x={430} y={285} textAnchor="middle">Scale {options.min}–{options.max}</text>
         </>,
+        "210 0 440 300",
       );
     } else if (options.kind === "state")
-      plot = frame(
-        series.map((s, i) => (
-          <g key={s.id}>
-            <text x={12} y={30 + i * 32}>
-              {s.name.slice(0, 24)}
-            </text>
-            {s.points.map((p, j) => (
-              <rect
-                key={p.key}
-                x={220 + (j * 600) / s.points.length}
-                y={16 + i * 32}
-                width={600 / s.points.length}
-                height={22}
-                fill={
-                  p.value === null
-                    ? "var(--muted)"
-                    : Number(p.value) >= options.stateThreshold!
-                      ? "var(--chart-3)"
-                      : "var(--chart-1)"
-                }
-              >
-                <title>
-                  {p.key} · {p.value ?? "Unavailable"} ·{" "}
-                  {p.value === null
-                    ? "Missing"
-                    : Number(p.value) >= options.stateThreshold!
-                      ? "At or above threshold"
-                      : "Below threshold"}
-                </title>
-              </rect>
-            ))}
-          </g>
-        )),
-        `0 0 860 ${Math.max(90, series.length * 32 + 40)}`,
-      );
+      plot = <MetricState data={data} series={series} threshold={options.stateThreshold!} />;
   }
+  const selectedKey = keys[Math.min(focus ?? keys.length - 1, keys.length - 1)];
+  const hasLegend = interactive;
   return (
-    <figure className="metric-chart">
+    <figure className="metric-chart" data-chart-kind={options.kind}>
       <figcaption>
         <div>
           <strong>{data.title}</strong>
-          <p>
-            {data.unit} · {data.interval} · {data.timezone}{" "}
-            {data.quality && <Badge variant="outline">{data.quality}</Badge>}
-          </p>
-          <p>
-            {data.startsAt.slice(0, 10)} — {data.endsAt.slice(0, 10)}{" "}
-            (exclusive)
-          </p>
+          <p>{data.unit} · {data.interval} · {data.timezone}</p>
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setTable(!table)}
-          aria-pressed={showTable}
-        >
-          {showTable ? "Chart" : "Data"}
-        </Button>
+        <div className="metric-chart-tools">
+          {interactive && !showTable && <span className="metric-chart-reading" title={selectedKey ? dateLabel(selectedKey, data.timezone) : undefined}>{focus === null ? "latest" : dateLabel(selectedKey ?? "", data.timezone)}</span>}
+          {options.kind !== "table" && <Button size="sm" variant="ghost" onClick={() => setTable(!table)} aria-label={showTable ? "Show chart" : "Show data"} aria-pressed={showTable}>{showTable ? "Chart" : "Data"}</Button>}
+        </div>
       </figcaption>
-      {showTable ? (
-        dataTable
-      ) : issue ? (
-        <p className="metric-chart-notice" role="status">
-          {issue}
-        </p>
-      ) : (
-        plot
-      )}
-      {!showTable &&
-        !issue &&
-        [
-          "line",
-          "step",
-          "area",
-          "bar",
-          "stacked_bar",
-          "stacked_area",
-          "bump",
-        ].includes(options.kind) && (
-          <div className="metric-chart-inspect">
-            <label>
-              Inspect interval
-              <input
-                type="range"
-                min={0}
-                max={Math.max(0, keys.length - 1)}
-                value={Math.min(focus, keys.length - 1)}
-                onChange={(e) => setFocus(Number(e.target.value))}
-              />
-            </label>
-            <span>{dateLabel(keys[focus] ?? "", data.timezone)}</span>
-            {series.map((s) => {
-              const p = s.points.find((p) => p.key === keys[focus]);
-              return (
-                <button
-                  key={s.id}
-                  disabled={!p || !onDrill}
-                  onClick={() => p && onDrill?.(p, s)}
-                  title={`${p?.value ?? "Unavailable"} · ${observationLabel(p??{},data.timezone)}`}
-                >
-                  {s.name}: {compact(p?.value ?? null)} {s.unit} ·{" "}
-                  {p?.quality ?? "missing"}
-                  {p?.observedAt&&<span className="block text-xs text-muted-foreground">{observationLabel(p,data.timezone)}</span>}
+      {showTable ? dataTable : issue ? <p className="metric-chart-notice" role="status">{issue}</p> : (
+        <div className={hasLegend ? "metric-chart-body" : undefined}>
+          <div className="metric-chart-plot">{plot}</div>
+          {hasLegend && <ul className="metric-chart-legend" aria-label="Chart legend">
+            {data.series.map(s => {
+              const point = s.points.find(p => p.key === selectedKey);
+              return <li key={s.id}>
+                <button type="button" aria-pressed={!hidden.includes(s.id)} aria-label={`Toggle ${s.name}`} title={`${s.name}: ${point?.value ?? "Unavailable"} ${s.unit} · ${point?.quality ?? "missing"} · ${observationLabel(point ?? {},data.timezone)}`} onClick={() => setHidden(hidden.includes(s.id) ? hidden.filter(id => id !== s.id) : [...hidden, s.id])}>
+                  <i className="metric-legend-ink" style={{ "--ink": color(s.id) } as CSSProperties} aria-hidden="true" />
+                  <span className="metric-legend-content"><span className="metric-legend-name">{Object.values(s.dimensions).join(" / ") || (s.comparison ? "Previous" : s.name === "All" ? "Current" : s.name)}{s.projection ? " · Estimated" : s.comparison && Object.keys(s.dimensions).length ? " · Previous" : ""}</span><strong>{compact(point?.value ?? null)}</strong></span>
                 </button>
-              );
+              </li>;
             })}
-          </div>
-        )}
-      {!showTable &&
-        !issue &&
-        [
-          "line",
-          "step",
-          "bar",
-          "area",
-          "stacked_bar",
-          "stacked_area",
-          "small_multiples",
-          "number",
-          "bump",
-        ].includes(options.kind) && (
-          <div className="metric-chart-legend">
-            {data.series.map((s) => (
-              <button
-                key={s.id}
-                aria-pressed={!hidden.includes(s.id)}
-                onClick={() =>
-                  setHidden(
-                    hidden.includes(s.id)
-                      ? hidden.filter((id) => id !== s.id)
-                      : [...hidden, s.id],
-                  )
-                }
-              >
-                <span
-                  style={{
-                    background: color(s.id),
-                    opacity: hidden.includes(s.id) ? 0.25 : 1,
-                  }}
-                />
-                {s.name}
-                {s.projection ? " · Estimated" : ""}
-              </button>
-            ))}
-          </div>
-        )}
-      {hidden.length > 0 && (
-        <p>Legend visibility only; query filters and totals are unchanged.</p>
+          </ul>}
+        </div>
       )}
-      {data.notes.length > 0 && (
-        <details className="metric-chart-notes">
-          <summary>Query details</summary>
-          {data.notes.map((n, i) => (
-            <p key={i}>{n}</p>
-          ))}
-        </details>
-      )}
+      {hidden.length > 0 && <p>Hidden series do not change query totals.</p>}
+      {!showTable && !issue && ["dumbbell","slope"].includes(options.kind) && <p className="metric-comparison-key">○ Previous month <span>● Selected month</span></p>}
+      <details className="metric-chart-notes">
+        <summary>Query details{data.quality && data.quality !== "complete" ? ` · ${data.quality}` : ""}</summary>
+        <p>{dateLabel(data.startsAt,data.timezone)} — {dateLabel(data.endsAt,data.timezone)} (exclusive) · {data.timezone}</p>
+        {data.quality && <Badge variant="outline">{data.quality}</Badge>}
+        {interactive && <p>Hover to inspect. Focus the chart and use ← / →, Home or End; Escape returns to latest. Click a legend to hide or show a series.</p>}
+        {interactive && onDrill && <div className="metric-chart-inspect">
+          {series.map(s => {const p=s.points.find(p=>p.key===selectedKey);return <Button key={s.id} size="sm" variant="outline" disabled={!p} onClick={()=>p&&onDrill(p,s)}>Inspect {s.name}</Button>;})}
+        </div>}
+        {data.notes.map((n,i)=><p key={i}>{n}</p>)}
+      </details>
     </figure>
   );
 }
 // Keep labels readable when a dashboard card is narrower than SVG coordinates.
-function MetricPlot({ viewBox, style, ...props }: SVGProps<SVGSVGElement>) {
+function MetricPlot({ viewBox, style, children, ...props }: Omit<SVGProps<SVGSVGElement>, "children"> & {children?: React.ReactNode | ((unit: number) => React.ReactNode)}) {
   const ref = useRef<SVGSVGElement>(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -1269,25 +1040,40 @@ function MetricPlot({ viewBox, style, ...props }: SVGProps<SVGSVGElement>) {
       ref={ref}
       viewBox={viewBox}
       style={{ ...style, "--metric-label-size": `${labelSize}px` } as CSSProperties}
-    />
+    >{typeof children === "function" ? children(width > 0 ? coordinateWidth / width : 1) : children}</svg>
   );
 }
 
-function Cartesian({
-  data,
-  kind,
-  frame,
-  target,
-  focus,
-}: {
+function Cartesian({ data, kind, color, target, focus, onFocus, allKeys }: {
   data: PlotData;
   kind: string;
-  frame: (x: React.ReactNode) => React.ReactNode;
+  color: (id: string) => string;
   target?: number;
   focus?: number;
+  onFocus?: (index: number | null) => void;
+  allKeys?: string[];
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(520);
+  const titleId = useId();
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => setWidth(Math.max(160, entry.contentRect.width)));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const L = 46, R = width - 8, T = 12, B = 188;
+  const frame = (children: React.ReactNode) => <div className="metric-cartesian" ref={ref}>
+    <svg viewBox={`0 0 ${width} 226`} role="img" aria-labelledby={titleId} tabIndex={onFocus ? 0 : undefined}
+      onPointerMove={onFocus ? e => {const rect=e.currentTarget.getBoundingClientRect(); onFocus(Math.max(0,Math.min(keys.length-1,Math.floor(((e.clientX-rect.left-L)/(R-L))*keys.length))));} : undefined}
+      onPointerLeave={()=>onFocus?.(null)} onBlur={()=>onFocus?.(null)}
+      onKeyDown={e=>{if(!onFocus)return;const current=focus??keys.length-1; const next=e.key==="Home"?0:e.key==="End"?keys.length-1:e.key==="ArrowLeft"?Math.max(0,current-1):e.key==="ArrowRight"?Math.min(keys.length-1,current+1):undefined;if(next!==undefined){e.preventDefault();onFocus(next);}else if(e.key==="Escape"){e.preventDefault();onFocus(null);}}}>
+      <title id={titleId}>{`${data.title}. ${data.unit}. Exact values and quality are available in Data.`}</title>{children}
+    </svg>
+  </div>;
   const series = data.series,
-    keys = [
+    keys = allKeys ?? [
       ...new Set(series.flatMap((s) => s.points.map((p) => p.key))),
     ].sort();
   const maps = series.map(
@@ -1302,10 +1088,13 @@ function Cartesian({
   const sums = keys.map((k) =>
       maps.reduce((v, m) => v + Number(m.get(k) ?? 0), 0),
     ),
-    low = rank ? 1 : Math.min(0, ...values),
-    high = rank
-      ? Math.max(2, series.length)
-      : Math.max(1, ...values, ...(stack ? sums : [])),
+    lower = rank ? 1 : Math.min(0, ...values),
+    upper = rank ? Math.max(2, series.length) : Math.max(1, ...values, ...(stack ? sums : [])),
+    scale = axis(Math.max(Math.abs(lower), Math.abs(upper)), data.unit),
+    step = scale[1] || 1,
+    low = rank ? lower : Math.floor(lower / step) * step,
+    high = rank ? upper : Math.ceil(upper / step) * step,
+    ticks = rank ? Array.from({length: Math.max(2, series.length)}, (_,i)=>i+1) : Array.from({length: Math.round((high-low)/step)+1},(_,i)=>low+i*step),
     x = (i: number) => L + ((i + 0.5) * (R - L)) / Math.max(1, keys.length),
     y = (v: number) =>
       rank
@@ -1331,8 +1120,7 @@ function Cartesian({
           opacity={0.6}
         />
       )}
-      {Array.from({ length: 5 }, (_, i) => {
-        const v = low + ((high - low) * i) / 4;
+      {ticks.map((v, i) => {
         return (
           <g key={i}>
             <line x1={L} x2={R} y1={y(v)} y2={y(v)} stroke="var(--border)" />
@@ -1388,7 +1176,7 @@ function Cartesian({
                   y1={y(Number(s.anchor.value))}
                   x2={x(keys.indexOf(s.points[0].key))}
                   y2={y(Number(s.points[0].value))}
-                  strokeWidth={2}
+                  strokeWidth={1.5} vectorEffect="non-scaling-stroke"
                   strokeDasharray="5 4"
                 />
               )}
@@ -1416,7 +1204,7 @@ function Cartesian({
                         (w * 0.8) / (stack ? 1 : series.length) - 1,
                       )}
                       height={Math.max(0.5, Math.abs(y(base + n) - y(base)))}
-                      opacity={s.comparison ? 0.45 : 0.8}
+                      fillOpacity={s.comparison ? 0.16 : 0.22} strokeWidth={1} vectorEffect="non-scaling-stroke" rx={1}
                     />
                   ) : (
                     <>
@@ -1425,10 +1213,10 @@ function Cartesian({
                         (!stack ||
                           maps.every((m) => m.get(keys[i - 1]) != null)) && (
                           <>
-                            {(kind === "area" || kind === "stacked_area") && (
+                            {(["line", "step", "area", "stacked_area"].includes(kind)) && (
                               <path
-                                d={`M${x(i - 1)},${y(prev + baseline(i - 1))}L${x(i)},${y(n + base)}L${x(i)},${y(base)}L${x(i - 1)},${y(baseline(i - 1))}Z`}
-                                fillOpacity={0.16}
+                                d={kind === "step" ? `M${x(i-1)},${y(prev)}H${x(i)}V${y(n)}L${x(i)},${y(0)}L${x(i-1)},${y(0)}Z` : `M${x(i - 1)},${y(prev + baseline(i - 1))}L${x(i)},${y(n + base)}L${x(i)},${y(base)}L${x(i - 1)},${y(baseline(i - 1))}Z`}
+                                fillOpacity={kind === "stacked_area" ? 0.22 : kind === "area" ? 0.2 : 0.10}
                                 stroke="none"
                               />
                             )}
@@ -1439,20 +1227,20 @@ function Cartesian({
                                   : `M${x(i - 1)},${y(prev + baseline(i - 1))}L${x(i)},${y(n + base)}`
                               }
                               fill="none"
-                              strokeWidth={2}
+                              strokeWidth={1.5} vectorEffect="non-scaling-stroke"
                               strokeDasharray={
                                 s.comparison || s.projection || s.points.find(p=>p.key===keys[i])?.quality==='stale' ? "5 4" : undefined
                               }
                             />
                           </>
                         )}
-                      {(keys.length < 80 || (prev == null && nums[i + 1] == null)) && (
+                      {(focus === i || rank || (prev == null && nums[i + 1] == null)) && (
                         <circle
                           cx={x(i)}
                           cy={y(n + base)}
-                          r={2.5}
-                          strokeWidth={1}
-                          fill={
+                          r={rank ? 3 : 2.5}
+                          strokeWidth={rank ? 1.5 : 1} vectorEffect="non-scaling-stroke"
+                          fill={rank ? `color-mix(in oklch, ${color(s.id)} 25%, var(--background))` :
                             s.points.find((p) => p.key === keys[i])?.quality ===
                             "complete"
                               ? color(s.id)
@@ -1469,8 +1257,8 @@ function Cartesian({
         );
       })}
       {keys.map((key, i) =>
-        i % Math.max(1, Math.ceil(keys.length / 7)) === 0 ? (
-          <text key={key} x={x(i)} y={278} textAnchor="middle">
+        i % Math.max(1, Math.ceil(keys.length / Math.max(2, Math.floor((R-L)/90)))) === 0 ? (
+          <text key={key} x={x(i)} y={207} textAnchor="middle">
             <tspan x={x(i)}>{dateLabel(key, data.timezone, true)}</tspan>
             {["minute", "5_minutes", "15_minutes", "hour"].includes(data.interval) && Number.isFinite(Date.parse(key)) && (
               <tspan x={x(i)} dy={14}>
@@ -1483,7 +1271,7 @@ function Cartesian({
     </>,
   );
 }
-function MiniLine({ series }: { series: PlotSeries }) {
+function MiniLine({ series, ink }: { series: PlotSeries; ink: string }) {
   const values = series.points
       .filter((p) => p.value !== null)
       .map((p) => Number(p.value)),
@@ -1493,17 +1281,16 @@ function MiniLine({ series }: { series: PlotSeries }) {
     <svg viewBox="0 0 200 40" aria-hidden="true">
       {series.points.map((p, i) => {
         const prev = series.points[i - 1];
-        return i && p.value !== null && prev.value !== null ? (
-          <line
-            key={p.key}
-            x1={((i - 1) / Math.max(1, series.points.length - 1)) * 200}
-            x2={(i / Math.max(1, series.points.length - 1)) * 200}
-            y1={38 - ((Number(prev.value) - low) / span) * 36}
-            y2={38 - ((Number(p.value) - low) / span) * 36}
-            stroke={color(series.id)}
-            strokeWidth={2}
-          />
-        ) : null;
+        if (p.value === null) return null;
+        const x = (i / Math.max(1, series.points.length - 1)) * 200;
+        const y = 38 - ((Number(p.value) - low) / span) * 36;
+        if (!prev || prev.value === null) return <circle key={p.key} cx={x} cy={y} r={1.5} fill={ink} />;
+        const px = ((i - 1) / Math.max(1, series.points.length - 1)) * 200;
+        const py = 38 - ((Number(prev.value) - low) / span) * 36;
+        return <g key={p.key}>
+          <path d={`M${px},${py}L${x},${y}V40H${px}Z`} fill={ink} fillOpacity={0.22} />
+          <line x1={px} x2={x} y1={py} y2={y} stroke={ink} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+        </g>;
       })}
     </svg>
   );

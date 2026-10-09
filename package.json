@@ -17,7 +17,8 @@
     "seed:demo": "node --env-file-if-exists=.env --import tsx scripts/seed-demo.ts",
     "metrics:verify-resolution": "node --env-file-if-exists=.env --import tsx scripts/metrics/verify-resolution.ts",
     "metrics:verify-missing-data": "node --env-file-if-exists=.env --import tsx scripts/metrics/verify-missing-data.ts",
-    "metrics:verify-purge": "node --env-file-if-exists=.env --import tsx scripts/metrics/verify-purge.ts"
+    "metrics:verify-purge": "node --env-file-if-exists=.env --import tsx scripts/metrics/verify-purge.ts",
+    "seed:charts": "node --env-file-if-exists=.env --import tsx scripts/seed-chart-gallery.ts"
   },
   "dependencies": {
     "@shpyrd/ui": "file:vendor/shpyrd-ui",

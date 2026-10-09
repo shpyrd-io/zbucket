@@ -230,7 +230,7 @@ export function MetricStudio({ viewerId }: { viewerId: string }) {
                   <p className="text-sm">
                     {draft.kind === "view"
                       ? "Choose up to five saved queries. Combined queries use matching dates, intervals and reporting timezones."
-                      : "Choose up to twelve saved views. Order below controls panel order."}
+                      : "Choose up to 32 saved views. Order below controls panel order."}
                   </p>
                   <div className="metric-library-choices">
                     {items
@@ -250,7 +250,7 @@ export function MetricStudio({ viewerId }: { viewerId: string }) {
                               checked={chosen}
                               disabled={
                                 !chosen &&
-                                refs.length >= (draft.kind === "view" ? 5 : 12)
+                                refs.length >= (draft.kind === "view" ? 5 : 32)
                               }
                               onChange={(e) =>
                                 change({
@@ -426,6 +426,7 @@ export function MetricStudio({ viewerId }: { viewerId: string }) {
                     Executed {run.data.runAt} · Live query results. Save
                     evidence from Metrics for an immutable record.
                   </p>
+                  {selected.kind === "dashboard" && <div className="metric-dashboard-jump"><span>{run.data.panels.length} charts</span><SelectControl aria-label="Jump to chart" value="" onValueChange={id => document.getElementById(`panel-${id}`)?.scrollIntoView({block:"start",behavior:"smooth"})}><option value="">Jump to chart…</option>{run.data.panels.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</SelectControl></div>}
                   <div
                     className={
                       selected.kind === "dashboard" ? "metric-dashboard" : ""
@@ -433,7 +434,7 @@ export function MetricStudio({ viewerId }: { viewerId: string }) {
                     data-layout={selected.config.layout}
                   >
                     {run.data.panels.map((p) => (
-                      <section key={p.id}>
+                      <section key={p.id} id={`panel-${p.id}`} data-chart-kind={p.chart.kind} data-chart-orientation={p.chart.orientation}>
                         {p.data ? (
                           <MetricChart data={p.data} options={p.chart} />
                         ) : (
