@@ -29,5 +29,5 @@ export async function authenticate(pool:pg.Pool,req:Request):Promise<Principal>{
 }
 export function human(p:Principal){check(p.kind==='user','A personal session is required.',403);return p;}
 export function admin(p:Principal){const u=human(p);check(u.admin,'Warehouse administrator access required.',403);return u;}
-export function checkOrigin(req:Request,p:Principal){if(p.kind==='integration')return;const origin=req.headers.get('origin');check(!origin||origin===new URL(req.url).origin,'Cross-origin request rejected.',403);check(req.headers.get('sec-fetch-site')!=='cross-site','Cross-site request rejected.',403);}
+export function checkOrigin(req:Request,p:Principal){if(p.kind==='integration')return;const origin=req.headers.get('origin');check(!origin||origin===(process.env.APP_ORIGIN||new URL(req.url).origin),'Cross-origin request rejected.',403);check(req.headers.get('sec-fetch-site')!=='cross-site','Cross-site request rejected.',403);}
 export async function audit(pool:Pick<pg.Pool,'query'>,p:Principal,action:string,target:string,status=200){await pool.query('INSERT INTO warehouse_audit(id,actor_id,action,target,status) VALUES($1,$2,$3,$4,$5)',[uuid(),p.id,action.slice(0,160),target.slice(0,200),status]);}

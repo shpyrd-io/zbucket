@@ -18,7 +18,7 @@ npm run dev
 
 Open http://localhost:4332. `dev` starts web and worker together. The local database created for this experiment is `shpyrd_warehouse`; the configured environment is ignored by Git. Voyage is enabled in this local experiment with explicit user authorization. Fresh installations must configure `VOYAGE_API_KEY` to enable semantic indexing/search; see the documented data sent to Voyage. The key stays in the ignored local environment file.
 
-**Dependency note:** the initial machine setup reused an independent copy of Tower's installed dependencies because the registry/cache could not resolve every version in its existing lockfile. The package manifests and lockfile are included; a clean registry install must be rechecked in the deployment environment before release. There are no runtime references to the Tower checkout.
+**Dependencies:** `.npmrc` sets `install-links=true` to install the bundled design system as the local package recorded in the lockfile. Use `npm ci`; there are no runtime references to the Tower checkout.
 
 ## Explore
 
@@ -54,4 +54,4 @@ npm run metrics:verify-purge
 npm run build
 ```
 
-Tests use synthetic data and isolated PostgreSQL schemas. `experiments/` contains test reports. No production/staging deployment or Tower data migration is included.
+Tests use synthetic data and isolated PostgreSQL schemas. `experiments/` contains test reports. See [Deployment](docs/deployment.md) for the authenticated Shpyrd deployment, dedicated database, worker, shared export storage and integration routing. No Tower data migration is performed.

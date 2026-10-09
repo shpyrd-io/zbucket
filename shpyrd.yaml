@@ -1,0 +1,28 @@
+project: warehouse
+exposure: external
+globals: false
+env:
+  NODE_ENV: production
+  WAREHOUSE_ACCESS: shpyrd
+  APP_ORIGIN: https://platform-warehouse.shpyrd.app
+  VOYAGE_MODEL: voyage-4
+  METRICS_EXPORT_DIRECTORY: /data/exports
+build:
+  stack: full
+  env:
+    BP_NODE_VERSION: "24.*"
+    BP_NODE_RUN_SCRIPTS: build
+processes:
+  web:
+    size: shared-l
+    healthCheck:
+      path: /api/health
+      gracePeriod: 90s
+    volumes:
+      - name: exports
+        path: /data/exports
+  worker:
+    size: shared-m
+    volumes:
+      - name: exports
+        path: /data/exports

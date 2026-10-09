@@ -32,7 +32,7 @@ No agent harness, OpenRouter model, company strategy, DRI assignment, problem ma
 
 `npm run dev` starts the web UI at 127.0.0.1:4332 and a worker. `npm run worker` runs background ingestion, raw export, retention and optional knowledge indexing separately. `npm run build` and `npm start` are the production web commands. Keep the worker running whenever ingestion is enabled. The Metrics UI refresh is manual.
 
-Use an independent `DATABASE_URL`; never reuse the Tower database. The example DB is `shpyrd_warehouse`. Local files for exports live under this project's `.data`. Back up PostgreSQL and any pending file jobs together. There is no automated deployment in this PoC.
+Use an independent `DATABASE_URL`; never reuse the Tower database. The example DB is `shpyrd_warehouse`. Local files for exports live under this project's `.data`. Back up PostgreSQL and any pending file jobs together. The Shpyrd deployment mounts a shared persistent export volume in both processes; see [Deployment](deployment.md).
 
 Local identity is restricted to development and loopback. Production fails closed unless Shpyrd issuer, project and workspace are configured. Personal JWTs are verified against JWKS, issuer, project audience, workspace, expiration and allowed provider. App credentials bypass personal provisioning and are verified only by Warehouse. Configure the hosting gateway to pass machine Authorization headers to `/api/v1/metrics/*` and `/api/v1/knowledge/*`; the application still enforces permissions. Do not make the whole app public to solve a gateway redirect.
 
