@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-09T22:20:15.104Z",
+  "passed": 8,
+  "examples": 19,
+  "metrics": 20,
+  "checks": [
+    "Every JSON block parses",
+    "All nine kinds and three input modes: actual guide payloads accepted and published",
+    "Decimal totals, weighted ratios, means, minima/maxima, global distinct deduplication and interpolated p95 match guide arithmetic",
+    "Latest balance, single account, across-account mean, daily stale carry and exclusive boundary semantics",
+    "Comparisons, grouped results, saved snapshots, JSON exports, receipt deduplication and declared coverage",
+    "Full replacement correction and next-revision tombstone",
+    "Guide document CRUD workflow: create, retry, search, optimistic conflict, history, restore and reversible archive",
+    "Bundled importer archives only two explicit retired keys, preserves unrelated content and is idempotent"
+  ],
+  "scope": "Isolated PostgreSQL schema; guide fixture dates shifted together into current retention; no external provider calls"
+}

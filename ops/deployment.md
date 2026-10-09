@@ -6,7 +6,7 @@ policyStatus: observed
 collection: warehouse
 category: Deployment
 tags: [deployment, authentication, integrations, operations]
-index: true
+index: false
 ---
 
 # Deploying Warehouse

@@ -1,0 +1,4 @@
+[
+  {"collection":"warehouse","key":"warehouse.architecture","reason":"Replaced PoC and adoption notes with application API specifications."},
+  {"collection":"warehouse","key":"warehouse.deployment","reason":"Moved internal deployment instructions out of the application knowledge base."}
+]

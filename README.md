@@ -1,6 +1,6 @@
 # Warehouse
 
-Standalone proof of concept for shared **Metrics** and **Knowledge**, derived from the Control Tower data modules. Every consuming backend uses one integration identity with explicit read/write permissions. Control Tower itself is a future client; the original project is unchanged.
+Shared **Metrics** and **Knowledge** for applications. Every consuming backend uses one integration identity with explicit read/write permissions.
 
 ## Run locally
 
@@ -37,9 +37,15 @@ The examples include sales by channel/region, bank snapshots, campaign spend/lea
 
 Use **Jump to chart** to find an example (the horizontal funnel is **28b** and spans the dashboard width), or hide the library to give the dashboard more room. The visualization selector offers **Funnel · vertical** and **Funnel · horizontal** directly. Hover a time chart to see values in its legend; focus it and use arrows/Home/End, or Escape to return to latest. Legends toggle visibility, **Data** shows exact values, and **Query details** preserves quality and provenance. On roomy cards, legends move beside the plot; narrow cards place them below. Dashboard layouts support up to 32 views while retaining the 20-distinct-query execution budget.
 
-## APIs and architecture
+## API guides
 
-See [Integration guide](docs/integrations.md) for POST payloads, authentication, scoped queries and document publication. [Architecture](docs/architecture.md) records what was extracted, future Tower adoption and PoC limits. These files are also imported into Warehouse's own Knowledge Base. `src/client/warehouse.ts` is a small server-side client; `examples/control-tower-client.ts` illustrates a future consumer.
+The indexed `docs/` directory contains three application-facing guides:
+
+- [Integration and credentials](docs/integrations.md)
+- [Metrics API specification and recipes](docs/metrics-api.md)
+- [Knowledge API specification and recipes](docs/knowledge-api.md)
+
+`src/client/warehouse.ts` is a small server-side client. Internal operating instructions live in `ops/` and are not imported into Knowledge. The bundled importer archives only the explicitly retired documentation keys in `scripts/retired-knowledge.json`; it never removes arbitrary documents missing from a directory.
 
 ```sh
 npm run knowledge:import -- --dir=/absolute/docs/path --dry-run
@@ -48,10 +54,11 @@ npm run lint
 npm run typecheck
 npm test
 npm run test:acceptance
+npm run test:api-docs
 npm run metrics:verify-resolution
 npm run metrics:verify-missing-data
 npm run metrics:verify-purge
 npm run build
 ```
 
-Tests use synthetic data and isolated PostgreSQL schemas. `experiments/` contains test reports. See [Deployment](docs/deployment.md) for the authenticated Shpyrd deployment, dedicated database, worker, shared export storage and integration routing. No Tower data migration is performed.
+Tests use synthetic data and isolated PostgreSQL schemas. `experiments/` contains test reports. See [Deployment](ops/deployment.md) for the authenticated Shpyrd deployment, dedicated database, worker, shared export storage and integration routing. No Tower data migration is performed.
