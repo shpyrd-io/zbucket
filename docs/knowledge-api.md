@@ -15,6 +15,17 @@ Applications publish and retrieve Markdown documents from shared, permissioned c
 
 All requests below are server-to-server, relative to `/api/v1`, with `Authorization: Bearer $WAREHOUSE_TOKEN`. POSTs require `Content-Type: application/json`. The public browser hostname requires Shpyrd login; a Warehouse token alone cannot bypass that gateway.
 
+## Internal API origin
+
+For this Warehouse installation, execute the examples from an allowed Shpyrd project using:
+
+```sh
+export WAREHOUSE_URL='http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local'
+# Inject WAREHOUSE_TOKEN from the caller's secret store (wh_…).
+```
+
+An administrator must authorize the caller with `shpyrd allow add project <caller-project> --project warehouse`. The HTTP service is internal to the cluster. The public HTTPS hostname is for browser login and does not accept a Warehouse token as a substitute for Shpyrd sign-in. Neither the internal URL nor network permission replaces the API token and its grants.
+
 ## Interface and permissions
 
 | Method and path | Required integration permissions | Result |

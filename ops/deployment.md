@@ -30,7 +30,7 @@ The checked-in `.npmrc` uses `install-links=true` so the bundled, unmodified des
 
 ## Application integrations
 
-The public hostname is protected by Shpyrd's personal login. A Warehouse `wh_` credential alone cannot bypass that gateway. For another Shpyrd project, first authorize its network connection with `shpyrd allow add project <caller> --project warehouse`. Configure that caller with Warehouse's internal service URL and a `wh_` credential granting only its required metric keys and Knowledge collections. No callers are allowed automatically.
+The public hostname is protected by Shpyrd's personal login. A Warehouse `wh_` credential alone cannot bypass that gateway. For another Shpyrd project, first authorize its network connection with `shpyrd allow add project <caller> --project warehouse`. Configure that caller with `http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local` (the cluster-only web service on port 80) and a `wh_` credential granting only its required metric keys and Knowledge collections. No callers are allowed automatically.
 
 An external producer needs an explicitly configured machine ingress that preserves its Authorization bearer while retaining Warehouse's permission checks. This deployment does not open an anonymous path through the human login gateway. Integration requests never create human users.
 

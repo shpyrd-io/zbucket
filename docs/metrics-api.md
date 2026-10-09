@@ -13,6 +13,17 @@ index: true
 
 Use this guide to define, publish and query measurements. All examples are fictional. They assume an authorized API origin in `WAREHOUSE_URL` and a scoped `wh_` credential in `WAREHOUSE_TOKEN`; see **Integrating an application with Warehouse** for gateway access and permissions. A Shpyrd browser login and a Warehouse application token are different credentials.
 
+## Internal API origin
+
+For this Warehouse installation, execute the examples from an allowed Shpyrd project using:
+
+```sh
+export WAREHOUSE_URL='http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local'
+# Inject WAREHOUSE_TOKEN from the caller's secret store (wh_…).
+```
+
+An administrator must authorize the caller with `shpyrd allow add project <caller-project> --project warehouse`. The HTTP service is internal to the cluster. The public HTTPS hostname is for browser login and does not accept a Warehouse token as a substitute for Shpyrd sign-in. Neither the internal URL nor network permission replaces the API token and its grants.
+
 ## Three independent decisions
 
 1. **Ingestion contract:** what one observation means, its unit, dimensions, authoritative publisher/input mode and metric kind. This contract is immutable after creation.

@@ -25,16 +25,18 @@ For another Shpyrd project, an administrator grants its network connection with:
 shpyrd allow add project <caller-project> --project warehouse
 ```
 
-Then configure that backend with the Warehouse internal service URL supplied by the platform and its scoped `wh_` token. An external producer needs an explicitly configured machine ingress that preserves the bearer header. Do not disable the application's login protection or send a secret to a login redirect. A redirect to login or an HTML response means connectivity/authentication at the gateway must be resolved first.
+Then configure that backend with **`http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local`** and its scoped `wh_` token. This is the verified `web` service on port 80 in this Warehouse installation. It resolves only inside the Shpyrd Kubernetes cluster; it is not a browser or external-client URL. Internal service traffic uses HTTP; internet-facing machine ingress must use HTTPS. An external producer needs an explicitly configured machine ingress that preserves the bearer header. Do not disable the application's login protection or send a secret to a login redirect. A redirect to login or an HTML response means connectivity/authentication at the gateway must be resolved first.
 
 Every shell example in these guides assumes:
 
 ```sh
-# Use the API origin reachable through the caller's authorized connection.
+# Run from an allowed Shpyrd project inside the same cluster.
 # Do not add /api/v1 to WAREHOUSE_URL; examples include it.
-export WAREHOUSE_URL='https://your-authorized-warehouse-api-origin'
+export WAREHOUSE_URL='http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local'
 # Inject WAREHOUSE_TOKEN from the consuming backend's secret store.
 ```
+
+For this installation, Metrics requests use `http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local/api/v1/metrics/...` and Knowledge requests use `http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local/api/v1/knowledge/...`. A recreated project can have a different namespace; verify the service rather than reusing an old URL.
 
 Use HTTPS for internet traffic. Keep tokens on the backend, never in browser code, URLs or source control. The request format is:
 
