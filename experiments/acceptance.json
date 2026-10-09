@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-09T14:56:47.814Z",
+  "passed": 12,
+  "checks": [
+    "One integration credential publishes metrics and documents, reads data and receipts; no separate producer secret",
+    "Document retries, optimistic revisions, restore, immediate text search and vector indexing with deterministic fixture",
+    "Immutable metric contract and metadata edits retain measurements",
+    "Dimension-scoped reader cannot write, escape scope, inspect another receipt, manage integrations or create human users",
+    "Collection search and document ownership enforced; write grant cannot impersonate another metric publisher",
+    "Corrections and retractions authorize both old and new dimension scopes atomically",
+    "Saved snapshots revalidate current scopes after permission narrowing",
+    "Credential rotation, revocation and expiration",
+    "Default-deny catalog/query/document access and application request quota",
+    "Event fanout checks every derived metric before accepting a batch and uses the same application credential",
+    "Unknown bearer credentials, cross-origin administration and disabled integrations are rejected",
+    "Document history retains current plus 20 revisions; archived content is removed from discovery"
+  ],
+  "scope": "isolated synthetic schema",
+  "providers": "no real provider calls"
+}

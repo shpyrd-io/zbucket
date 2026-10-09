@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-09T14:56:55.653Z",
+  "checks": [
+    "Leave gaps remains the default; stale tuples never become zero",
+    "Policy edit preserves facts and ingestion version",
+    "Optimistic policy conflict rolls back and successful edit is audited",
+    "Last value per tuple is reduced after selection; sum/average/min/max and observation provenance agree",
+    "No future observation or backward filling before the first reading",
+    "An exact boundary observation belongs to the following interval",
+    "Partial bucket edges select actual raw observation times",
+    "Indexed predecessor carries readings from before the queried period and freshness lookback",
+    "Comparison and evidence preserve each period’s provenance",
+    "Late historical reading changes only boundaries after its true observedAt",
+    "Saved evidence is immutable after both policy changes and late ingestion",
+    "Known tuples without a historical reading remain missing; dimension filtering works",
+    "Legacy metrics without rollups use bounded raw history",
+    "Retained daily predecessor seeds recent hourly queries after raw/hour expiry",
+    "No value is fabricated when all retained evidence has expired",
+    "Non-snapshot metrics and unsupported fill modes are rejected",
+    "1,000 tuples × 48 hourly points retain exact totals within the existing query budget"
+  ],
+  "timings": {
+    "ingestAndProcess1000Ms": 146.46604100000008,
+    "query1000Tuples48HoursMs": 56.17324999999994
+  },
+  "limitations": [
+    "Local isolated PostgreSQL acceptance run, not a production capacity estimate",
+    "Known dimension registry has no entity opening/closing lifecycle"
+  ]
+}

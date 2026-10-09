@@ -1,0 +1,23 @@
+node_modules/
+.next/
+.data/
+.env*
+!.env.example
+*.tsbuildinfo
+.DS_Store
+
+.next-scenarios/
+
+# Local credentials, logs, backups and generated reports
+*.log
+*.sqlite
+*.sqlite-*
+*.db
+*.dump
+*.pem
+*.key
+coverage/
+playwright-report/
+test-results/
+__pycache__/
+*.pyc

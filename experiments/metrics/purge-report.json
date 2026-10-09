@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-09T15:00:47.764Z",
+  "checks": [
+    "Read-only preview, exact key confirmation, stale preview rejection, half-open period plus dimension, rebuilt hourly/daily aggregates, split coverage and preserved snapshots",
+    "Retries cannot resurrect purged observations; corrections require a new record identity for deliberate republishing",
+    "Dimension-only cleanup removes pending publications and empty dimension registry entries; new observations can recreate a series",
+    "Latest queries use the surviving predecessor without carrying a purged reading",
+    "Shared event fanout preserves other metrics, including pending events and legacy hourly states",
+    "Pending corrections must finish before purge, so moving an observation across a scope boundary cannot delete unrelated data",
+    "Concurrent worker publication and purge serialize safely or require a refreshed preview; no facts, totals or phantom series survive",
+    "Indivisible source aggregates reject partial deletion and accept complete intervals",
+    "Purging a partial bucket recalculates sum/count, weighted mean, ratio, extrema, distinct and percentile results from surviving data",
+    "Expired raw history supports complete reporting-day and all-time dimension deletion without corrupting adjacent retained totals",
+    "Whole reporting days honor timezone and the 23-hour daylight-saving boundary",
+    "An audit failure rolls back facts, aggregates, identities, coverage, dimension registry and purge history together",
+    "Only human administrators can preview and execute through the API; regular users and integration credentials cannot purge",
+    "20,000 observations across 1,000 dimension tuples retain exact totals outside the purged period"
+  ],
+  "timings": {
+    "preview20000Ms": 260.0150000000003,
+    "purge20000Ms": 974.2694170000004
+  },
+  "limitations": [
+    "Local isolated PostgreSQL run; existing user metrics were not purged.",
+    "Saved snapshots and export files are historical records, not erased by metric cleanup."
+  ]
+}

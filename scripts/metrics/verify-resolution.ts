@@ -1,0 +1,61 @@
+import pg from 'pg';
+import { publicationAcceptance } from './publication-acceptance';
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { mkdir,writeFile } from 'node:fs/promises';
+import { performance } from 'node:perf_hooks';
+import { migrateMetrics } from '../../src/server/db/metrics';
+import { createSource,saveDefinition,ingest } from '../../src/server/metrics/service';
+import { processMetricBatch } from '../../src/server/metrics/worker';
+import { queryMetric } from '../../src/server/metrics/query';
+import { maintainMetricRetention } from '../../src/server/metrics/rollups';
+const schema='resolution_test_'+Date.now();
+const pool=new pg.Pool({connectionString:process.env.DATABASE_URL,options:`-c search_path=${schema},public`,max:3,statement_timeout:30000});
+const checks:string[]=[],timings:Record<string,number>={};
+const owner=randomUUID();
+const day=new Date();day.setUTCHours(0,0,0,0);day.setUTCDate(day.getUTCDate()-2);
+const at=(hours:number)=>new Date(+day+hours*3600000).toISOString();
+const policy={baseResolution:'minute',baseRetentionDays:7,hourRetentionDays:30,dayRetentionDays:365,rawRetentionDays:3};
+try{
+ await pool.query(`CREATE SCHEMA ${schema}`);await migrateMetrics(pool);
+ const source=await createSource(pool,'Resolution acceptance',owner);
+ const define=(key:string,kind:string,extra={})=>saveDefinition(pool,{key,name:key,kind,sourceId:source.id,inputMode:'measurements',unit:'USD',dimensions:['entity'],status:'active',timezone:'UTC',storagePolicy:policy,...extra},owner);
+ const sales=await define('sales','sum');
+ const record=(id:string,h:number,value:string,entity='A')=>({measurementId:id,metricKey:sales.key,definitionVersion:1,observedAt:at(h),unit:'USD',value,dimensions:{entity}});
+ await ingest(pool,source.id,'measurements',{measurements:[record('a',.1,'10'),record('b',.2,'20'),record('c',1.1,'30','B')]});await processMetricBatch(pool);
+ const q={metricId:sales.id,startsAt:at(0),endsAt:at(2),interval:'hour' as const};
+ let result=await queryMetric(pool,q);assert.equal(Number(result.value),60);assert.equal(result.resolution,'hour');assert.deepEqual(result.series.map(s=>Number(s.value)),[30,30]);checks.push('Hourly materialization and total');
+ const groups=await queryMetric(pool,{...q,groupBy:['entity'],groupLimit:1});assert.equal(groups.breakdown?.rows.length,1);assert.equal(groups.groups?.[0].series.length,2);assert.equal(Number(groups.value),60);const page=await queryMetric(pool,{...q,groupBy:['entity'],groupLimit:1,groupAfter:groups.breakdown?.nextCursor});assert.equal(page.breakdown?.rows[0].dimensions.entity,'B');checks.push('Paginated grouped series retain full total');
+ await ingest(pool,source.id,'measurements',{measurements:[{...record('a',1.5,'50','B'),revision:2}]},undefined,true);await processMetricBatch(pool);
+ result=await queryMetric(pool,q);assert.equal(Number(result.value),100);assert.deepEqual(result.series.map(s=>Number(s.value)),[20,80]);checks.push('Correction moves timestamp and dimension without double count');
+ const daily=await queryMetric(pool,{...q,endsAt:at(24),interval:'day'});assert.equal(daily.resolution,'day');assert.equal(Number(daily.value),100);checks.push('Daily parent rebuilt');
+ const mean=await define('mean','mean');await ingest(pool,source.id,'measurements',{measurements:[1,2,3,4].map((_,i)=>({...record('m'+i,i<3?.1:1.1,i<3?'10':'50'),metricKey:mean.key}))});await processMetricBatch(pool);assert.equal(Number((await queryMetric(pool,{...q,metricId:mean.id})).value),20);checks.push('Weighted mean merges components');
+ const ratio=await define('ratio','ratio');await ingest(pool,source.id,'measurements',{measurements:[{...record('r1',.1,'0'),metricKey:ratio.key,numerator:'100',denominator:'100'},{...record('r2',1.1,'0'),metricKey:ratio.key,numerator:'900',denominator:'300'}]});await processMetricBatch(pool);assert.equal(Number((await queryMetric(pool,{...q,metricId:ratio.id})).value),2.5);checks.push('Ratio of sums, not mean of ratios');
+ const balance=await define('balance','latest',{freshnessSeconds:7200});await ingest(pool,source.id,'measurements',{measurements:[{...record('s1',.1,'100'),metricKey:balance.key},{...record('s2',.2,'200','B'),metricKey:balance.key},{...record('s3',1.1,'150'),metricKey:balance.key}]});await processMetricBatch(pool);
+ const balances=await queryMetric(pool,{...q,metricId:balance.id,aggregation:'sum'});assert.equal(Number(balances.value),350);assert.deepEqual(balances.series.map(s=>Number(s.value)),[300,350]);assert.equal(Number((await queryMetric(pool,{...q,metricId:balance.id,aggregation:'mean'})).value),175);checks.push('Snapshots select each dimension tuple before reduction');
+ const stale=await queryMetric(pool,{...q,metricId:balance.id,aggregation:'sum',endsAt:at(6)});assert.equal(stale.value,null);checks.push('Stale population never becomes a false total');
+ const compared=await queryMetric(pool,{...q,metricId:balance.id,aggregation:'sum',startsAt:at(1),compareStartsAt:at(0),compareEndsAt:at(1),snapshot:true});assert.equal(Number(compared.comparison?.absolute),50);assert.ok(compared.snapshotId);checks.push('Comparison and immutable evidence use identical semantics');
+ // A partial edge is evaluated from raw detail, not a fraction of a stored hour.
+ const partial=await queryMetric(pool,{...q,startsAt:at(.15),endsAt:at(1.2)});assert.equal(Number(partial.value),50);checks.push('Exact hybrid boundary fragments');
+ const split=await define('source_intervals','sum',{inputMode:'aggregates',storagePolicy:{...policy,baseResolution:'hour',baseRetentionDays:30}});
+ await ingest(pool,source.id,'aggregates',{aggregates:[{aggregateId:'interval1',metricKey:split.key,definitionVersion:1,startsAt:at(0),endsAt:at(1),dimensions:{entity:'A'},unit:'USD',state:{kind:'sum',value:'24'}}]});await processMetricBatch(pool);
+ await assert.rejects(()=>queryMetric(pool,{...q,metricId:split.id,startsAt:at(.5)}),/indivisible/);
+ await assert.rejects(()=>queryMetric(pool,{...q,metricId:split.id,interval:'minute'}),/finer/);checks.push('Indivisible input intervals and base resolution enforced');
+ const dst=await define('dst','sum',{timezone:'America/New_York',storagePolicy:{...policy,baseResolution:'hour',baseRetentionDays:365,hourRetentionDays:365,dayRetentionDays:730,rawRetentionDays:null}});
+ await ingest(pool,source.id,'measurements',{measurements:[{...record('dst1',0,'4'),metricKey:dst.key,observedAt:'2026-03-08T05:01:00Z'},{...record('dst2',0,'6'),metricKey:dst.key,observedAt:'2026-03-09T03:59:00Z'}]});await processMetricBatch(pool);
+ const spring=await queryMetric(pool,{metricId:dst.id,startsAt:'2026-03-08T05:00:00Z',endsAt:'2026-03-09T04:00:00Z',interval:'day'});assert.equal(Number(spring.value),10);assert.equal(spring.series.length,1);assert.equal(spring.resolution,'day');checks.push('23-hour reporting day aggregates correctly');
+ await assert.rejects(()=>queryMetric(pool,{...q,interval:'minute',endsAt:at(24*10)}),/10,000/);checks.push('Point budget bounds interactive work');
+ const before=await queryMetric(pool,{...q,endsAt:at(24),interval:'day'});
+ await maintainMetricRetention(pool,new Date(+day+5*86400000));assert.equal(Number((await pool.query('SELECT count(*) n FROM metric_facts WHERE metric_id=$1',[sales.id])).rows[0].n),0);
+ const after=await queryMetric(pool,{...q,endsAt:at(24),interval:'day'});assert.equal(after.value,before.value);
+ await assert.rejects(()=>ingest(pool,source.id,'measurements',{measurements:[{...record('b',.2,'22'),revision:2}]},undefined,true),/expired/);checks.push('Raw expiry retains rollups and rejects unsafe corrections');
+ await assert.rejects(()=>queryMetric(pool,{...q,startsAt:at(.101),endsAt:at(1.101)}),/expired|boundaries/);checks.push('Expired raw detail cannot silently answer partial-boundary queries');
+ // Duplicate identities remain recognized after payload compaction.
+ const duplicate=await ingest(pool,source.id,'measurements',{measurements:[record('b',.2,'20')]});assert.equal(duplicate.accepted,0);checks.push('Idempotency survives raw expiry');
+ checks.push(...await publicationAcceptance(pool));
+ const bench=await define('load','sum',{maxSeries:1000,storagePolicy:{...policy,rawRetentionDays:null}});
+ const n=Number(process.argv[2]??20000);assert.ok(Number.isInteger(n)&&n>=1000&&n<=1000000);
+ const begun=performance.now();for(let offset=0;offset<n;offset+=1000){await ingest(pool,source.id,'measurements',{measurements:Array.from({length:Math.min(1000,n-offset)},(_,j)=>{const i=offset+j;return {...record('load'+i,(i%1440)/60,'1.25','e'+(i%1000)),metricKey:bench.key};})});await processMetricBatch(pool);}
+ timings.ingestAndProcessMs=performance.now()-begun;await pool.query('ANALYZE metric_rollups');const ts=performance.now();const loaded=await queryMetric(pool,{metricId:bench.id,startsAt:at(0),endsAt:at(24),interval:'day'});timings.dailyQueryMs=performance.now()-ts;assert.equal(Number(loaded.value),n*1.25);checks.push(`${n} records across 1,000 dimension tuples, exact total`);
+ await mkdir('experiments/metrics',{recursive:true});await writeFile(`experiments/metrics/resolution-report-${n}.json`,JSON.stringify({at:new Date().toISOString(),checks,timings,records:n,limitations:['Local PostgreSQL finite run; not a staging load test','No raw histogram or counter-reset implementation']},null,2));console.log(JSON.stringify({checks,timings},null,2));
+}finally{await pool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);await pool.end();}

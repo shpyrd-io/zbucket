@@ -1,0 +1,1 @@
+export function isSubmitShortcut(e:{key:string;ctrlKey:boolean;metaKey:boolean;altKey:boolean;shiftKey:boolean;isComposing?:boolean}){return e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&!e.isComposing;}

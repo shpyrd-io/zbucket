@@ -1,0 +1,45 @@
+{
+  "at": "2026-10-09T14:56:54.736Z",
+  "checks": [
+    "Hourly materialization and total",
+    "Paginated grouped series retain full total",
+    "Correction moves timestamp and dimension without double count",
+    "Daily parent rebuilt",
+    "Weighted mean merges components",
+    "Ratio of sums, not mean of ratios",
+    "Snapshots select each dimension tuple before reduction",
+    "Stale population never becomes a false total",
+    "Comparison and immutable evidence use identical semantics",
+    "Exact hybrid boundary fragments",
+    "Indivisible input intervals and base resolution enforced",
+    "23-hour reporting day aggregates correctly",
+    "Point budget bounds interactive work",
+    "Raw expiry retains rollups and rejects unsafe corrections",
+    "Expired raw detail cannot silently answer partial-boundary queries",
+    "Idempotency survives raw expiry",
+    "Incremental states match raw decimal oracle for seven reducers and five resolutions",
+    "Repeated batches cannot add a second contribution at any level",
+    "Rollback and competing workers preserve atomic exactly-once publication",
+    "Late and equal-time snapshots keep a deterministic latest value across batches",
+    "Failed correction publication rolls back facts and every aggregation level together",
+    "Mixed correction/append batches rebuild old and new periods and dimension tuples",
+    "Retractions remove empty buckets and restore extrema and latest values",
+    "Superseded revisions spanning worker batches do not leave stale contributions",
+    "Incremental and reconstructed sufficient statistics agree",
+    "A changed storage contract requires a new metric; explicit corrections preserve source history",
+    "One dataset can publish policy and legacy metrics without duplicate materialization",
+    "Batched interval validation remains atomic and weighted averages remain exact",
+    "Indexed interval lookup rejects point overlap before an interval is processed",
+    "Retained daily totals survive late append and correction after fine states expire",
+    "20000 records across 1,000 dimension tuples, exact total"
+  ],
+  "timings": {
+    "ingestAndProcessMs": 4174.183875,
+    "dailyQueryMs": 24.014125000000604
+  },
+  "records": 20000,
+  "limitations": [
+    "Local PostgreSQL finite run; not a staging load test",
+    "No raw histogram or counter-reset implementation"
+  ]
+}

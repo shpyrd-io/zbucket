@@ -1,0 +1,21 @@
+import type { StoragePolicy, QueryInterval } from './resolution';
+export const metricKinds = ['sum','count','latest','mean','ratio','min','max','distinct','p95'] as const;
+export type MetricKind = typeof metricKinds[number];
+export type MissingDataPolicy = 'leave_gaps' | 'keep_previous';
+export type ObservationMetadata = {observedAt?:string|null;oldestObservedAt?:string|null;knownCount?:number;expectedCount?:number;staleCount?:number};
+export type MetricPoint = ObservationMetadata & {startsAt:string;value:string|null;count:string;quality?:string};
+export type MetricDefinition = {
+ missingData?:MissingDataPolicy;
+ storagePolicy?:StoragePolicy;
+ key:string; name:string; description:string; category:string; kind:MetricKind; unit:string;
+ sourceId:string; datasetKey:string; inputMode:'events'|'measurements'|'aggregates';
+ valueField:string; numeratorField:string; denominatorField:string; identityField:string;
+ dimensions:string[]; filters:Record<string,string>; timezone:string; freshnessSeconds:number;
+ maxSeries:number; status:'draft'|'active'|'paused'|'retired'; direction:'higher'|'lower'|'neutral';
+};
+export type Metric = MetricDefinition & {revision?:number;reportingRevision?:number;id:string; version:number; ownerId:string; createdAt:string};
+export type MetricSource = {id:string; name:string; ownerId:string; active:boolean; createdAt:string};
+export type MetricQuery = {groupRemainder?:boolean;groupMode?:"auto"|"selected"|"top"; groupSearch?:string; groupSelection?:Record<string,string>[]; interval?:QueryInterval; aggregation?:"sum"|"mean"|"min"|"max";metricId:string; startsAt:string; endsAt:string; dimensions?:Record<string,string>; groupBy?:string[]; groupAfter?:string; groupLimit?:number; compareStartsAt?:string; compareEndsAt?:string; version?:number; snapshot?:boolean};
+export type MetricBreakdown = {rows:(ObservationMetadata & {quality?:string;other?:boolean;dimensions:Record<string,string>;value:string|null;count:string})[];nextCursor?:string;order:"dimensions_asc"};
+export type MetricResult = ObservationMetadata & {groupBy?:string[]; groupDisplay?:"all"|"groups"; groupChoices?:{dimensions:Record<string,string>;value:string|null}[];groupComplete?:boolean;groupCount?:number; resolution?:string; interval?:QueryInterval; aggregation?:string; groups?:{dimensions:Record<string,string>;series:MetricPoint[]}[];breakdown?:MetricBreakdown;metric:Metric; value:string|null; count:string; numerator:string|null; denominator:string|null; startsAt:string; endsAt:string; quality:string; generation:string; lastReceivedAt:string|null; coverageEndsAt:string|null; comparison?:(ObservationMetadata & {groups?:MetricResult["groups"];breakdown?:MetricBreakdown;value:string|null; absolute:string|null; relative:string|null;quality:string;startsAt:string;endsAt:string;series?:MetricPoint[]}); series:MetricPoint[]; snapshotId?:string; reason?:string};
+export type MetricCatalog = {metrics:Metric[]; nextCursor?:string; sources:MetricSource[]; ingestions:{id:string;status:string;createdAt:string;recordCount:number;error:string|null}[]; episodes:{id:string;metricId:string;status:string;openedAt:string;value:string}[]};
