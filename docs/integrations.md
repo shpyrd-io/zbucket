@@ -52,7 +52,7 @@ An administrator opens **Integrations → New integration**:
 1. Set the application's name.
 2. Grant explicit metric keys for **read** and **publish**. These are separate lists. Keys can be granted before a metric exists. Empty lists grant nothing; wildcards are unsupported.
 3. Grant Knowledge collection keys for **read** and **publish**. Create each collection first. A collection is the document authorization boundary; category, tags and source type are descriptive metadata.
-4. Enable optional capabilities: Knowledge search, history and archive; metric snapshots and exports.
+4. Enable optional capabilities: Knowledge search, history and archive; metric snapshots and exports. Enable **Create and manage own metrics** only for applications allowed to auto-publish their metric definitions. This is `metrics.manageOwn`; it defaults to `false`, including for existing integrations.
 5. If necessary, restrict a metric to exact dimension values, such as `account_id: "account-001"`. Reads automatically include that scope; writes must explicitly match it. Multiple fields use AND.
 6. Save and select **Issue credential**. The full `wh_…` secret is displayed once. Store it immediately. The UI issues a 90-day token; administrative issuance supports 1–365 days.
 
@@ -66,6 +66,7 @@ A representative permission object is:
     "read": ["cash_balance_brl"],
     "write": ["cash_balance_brl"],
     "dimensions": {"cash_balance_brl": {"account_id": "account-001"}},
+    "manageOwn": false,
     "snapshots": true,
     "export": false
   },
@@ -79,7 +80,17 @@ A representative permission object is:
 }
 ```
 
-This object describes settings, not a body to submit to metric ingestion. Administrative integration changes require a human administrator session. Application tokens cannot create integrations, change permissions, create metric definitions or provision users.
+This object describes settings, not a body to submit to metric ingestion. Administrative integration changes require a human administrator session. Application tokens cannot create integrations, change arbitrary permissions or provision users. With `metrics.manageOwn: true`, they can register their own metrics, edit metadata and delete unused metrics through the definition API. Creation atomically grants read and publish access to that key; it does not grant snapshots, exports or any other application's metrics. See the Metrics API guide for POST/PATCH/DELETE contracts.
+
+### Auto-publish on application startup
+
+Enable **Create and manage own metrics** once on the integration. The application then sends `POST /api/v1/metrics/definitions` using the same `wh_` credential it uses for ingestion and queries. The server assigns the authenticated integration as publisher; the request must not contain `sourceId`, owner IDs or permission grants.
+
+A successful first registration returns **201** and adds the stable key to both read and publish grants. Repeating the same normalized registration returns **200** with the existing metric, without duplicating it, resetting settings or restoring grants removed by an administrator. Save the returned `metric.id`, `metric.key` and `metric.revision`. Use the stable key for ingestion and the revision for optimistic metadata edits.
+
+Management applies only to definitions this integration created through that API. A read/write grant, a shared credential or being selected as publisher by a human does not transfer definition ownership. Credential rotation preserves ownership because it belongs to the integration, not its token. Disabling management stops creation, edits and deletion while retaining separately granted data access. Existing definitions and permissions are not adopted or expanded automatically.
+
+Definition creation consumes one read and one publish key grant; each list supports up to 500 keys. A full list rejects creation atomically. Existing dimension restrictions on a pre-granted key are preserved. Give each metric an application-specific key such as `crm_leads_created` to avoid company-wide collisions.
 
 ## 3. Separate application and human access
 
@@ -99,7 +110,8 @@ Token requests check the integration's current permissions, active state, token 
 
 | Status | Meaning and next action |
 | --- | --- |
-| 200 | Read, document write, coverage or query succeeded. |
+| 200 | Read, document write, coverage, query, metric registration retry, metadata edit or empty deletion succeeded. |
+| 201 | Own metric registered; read and publish grants committed with the definition. |
 | 202 | Metric batch durably accepted; check its receipt. |
 | 400 / 422 | Invalid body, fields, semantics, retention window or query budget. Fix the request. |
 | 401 | Missing/invalid/expired/revoked credentials, or login required at the edge. |

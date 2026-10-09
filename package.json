@@ -19,7 +19,8 @@
     "metrics:verify-missing-data": "node --env-file-if-exists=.env --import tsx scripts/metrics/verify-missing-data.ts",
     "metrics:verify-purge": "node --env-file-if-exists=.env --import tsx scripts/metrics/verify-purge.ts",
     "seed:charts": "node --env-file-if-exists=.env --import tsx scripts/seed-chart-gallery.ts",
-    "test:api-docs": "node --env-file-if-exists=.env --import tsx scripts/verify-api-docs.ts"
+    "test:api-docs": "node --env-file-if-exists=.env --import tsx scripts/verify-api-docs.ts",
+    "test:metric-management": "node --env-file-if-exists=.env --import tsx scripts/verify-metric-management.ts"
   },
   "dependencies": {
     "@shpyrd/ui": "file:vendor/shpyrd-ui",

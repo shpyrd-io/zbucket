@@ -22,8 +22,8 @@ function example(name:string,replacements:Record<string,string>={}){
 }
 const url=new URL(process.env.DATABASE_URL!),schema='warehouse_docs_'+Date.now(),root=new pg.Pool({connectionString:url.toString()});
 await root.query(`CREATE SCHEMA ${schema}`);url.searchParams.set('options',`-c search_path=${schema},public`);process.env.DATABASE_URL=url.toString();process.env.WAREHOUSE_ACCESS='local';
-const {GET,POST}=await import('../app/api/v1/[...operation]/route');const {database}=await import('../src/server/database');const {processMetricBatch}=await import('../src/server/metrics/worker');
-async function call(path:string,body?:unknown,token?:string,status=200){const headers:Record<string,string>={};if(token)headers.Authorization='Bearer '+token;if(body)headers['Content-Type']='application/json';const response=await(body?POST:GET)(new Request('http://localhost/api/v1/'+path,{method:body?'POST':'GET',headers,body:body?JSON.stringify(body):undefined}),{params:Promise.resolve({operation:path.split('?')[0].split('/')})});const result=await response.json();assert.equal(response.status,status,`${path}: ${JSON.stringify(result)}`);return result;}
+const {GET,POST,PATCH,DELETE}=await import('../app/api/v1/[...operation]/route');const {database}=await import('../src/server/database');const {processMetricBatch}=await import('../src/server/metrics/worker');
+async function call(path:string,body?:unknown,token?:string,status=200,method?:'PATCH'|'DELETE'){const headers:Record<string,string>={};if(token)headers.Authorization='Bearer '+token;if(body)headers['Content-Type']='application/json';const response=await(method==='PATCH'?PATCH:method==='DELETE'?DELETE:body?POST:GET)(new Request('http://localhost/api/v1/'+path,{method:method??(body?'POST':'GET'),headers,body:body?JSON.stringify(body):undefined}),{params:Promise.resolve({operation:path.split('?')[0].split('/')})});const result=await response.json();assert.equal(response.status,status,`${path}: ${JSON.stringify(result)}`);return result;}
 try{
  await call('session');const pool=await database();
  const kinds=[
@@ -35,8 +35,16 @@ try{
  ];
  const keys=['cash_balance_brl',...kinds.map(r=>r[0])];
  await call('integrations',{action:'collection',key:'finance',name:'Finance'});
- const permissions={metrics:{read:keys,write:keys,dimensions:{},snapshots:true,export:true},knowledge:{readCollections:['finance'],writeCollections:['finance'],search:true,history:true,archive:true}};
+ const permissions={metrics:{manageOwn:true,read:keys,write:keys,dimensions:{},snapshots:true,export:true},knowledge:{readCollections:['finance'],writeCollections:['finance'],search:true,history:true,archive:true}};
  const app=await call('integrations',{action:'create',name:'API documentation fixtures',permissions});const token=(await call('integrations',{action:'issue',id:app.id,days:1})).secret;
+ const auto=await call('metrics/definitions',example('auto-balance-definition'),token,201);
+ assert.equal((await call('metrics/definitions',example('auto-balance-definition'),token)).metric.id,auto.metric.id);
+ const patched=await call('metrics/definitions/'+auto.metric.key,example('auto-metric-patch'),token,200,'PATCH');assert.equal(patched.metric.revision,2);
+ assert.equal((await call('metrics/definitions/'+auto.metric.key,{expectedRevision:2},token,200,'DELETE')).deleted,true);
+ await call('metrics/definitions',example('auto-event-definition'),token,201);
+ const autoReceipt=await call('metrics/events',example('auto-event-ingestion'),token,202);while(await processMetricBatch(pool)){}
+ assert.equal((await call('metrics/ingestions/'+autoReceipt.id,undefined,token)).status,'completed');
+ checks.push('Exact auto-publication guide bodies create, retry, PATCH, DELETE and publish an event dataset with one token');
  const sourceId=(await call('integrations')).apps.find((a:{id:string})=>a.id===app.id).source_id;
  const definition=example('balance-definition',{SOURCE_ID:sourceId});await call('metrics/definitions',definition);
  const policy=definition.definition.storagePolicy;
@@ -89,5 +97,5 @@ try{
  const again=spawnSync(process.execPath,['--import','tsx','scripts/import-knowledge.ts'],{env:process.env,cwd:process.cwd(),encoding:'utf8'});assert.equal(again.status,0,again.stderr);assert.match(again.stdout,/archived 0/);
  assert.equal((await pool.query("SELECT max(revision) revision FROM knowledge_documents WHERE key IN ('warehouse.integrations','warehouse.knowledge-api','warehouse.metrics-api')")).rows[0].revision,1);
  checks.push('Bundled importer archives only two explicit retired keys, preserves unrelated content and is idempotent');
- await mkdir('experiments',{recursive:true});const report={at:new Date().toISOString(),passed:checks.length,examples:examples.size,metrics:keys.length,checks,scope:'Isolated PostgreSQL schema; guide fixture dates shifted together into current retention; no external provider calls'};await writeFile('experiments/api-docs-acceptance.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report,null,2));
+ await mkdir('experiments',{recursive:true});const report={at:new Date().toISOString(),passed:checks.length,examples:examples.size,metrics:keys.length+2,checks,scope:'Isolated PostgreSQL schema; guide fixture dates shifted together into current retention; no external provider calls'};await writeFile('experiments/api-docs-acceptance.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report,null,2));
 }finally{await(await database()).end();await root.query(`DROP SCHEMA ${schema} CASCADE`);await root.end();}

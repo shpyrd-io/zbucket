@@ -32,8 +32,11 @@ export async function createSource(pool:pg.Pool,name:string,owner:string){
  });
 }
 export async function saveDefinition(pool:pg.Pool,input:unknown,actor:string,id?:string,expectedRevision?:number){
- const sourceId=id?(await getMetric(pool,id)).sourceId:undefined;
- return transaction(pool,async c=>{
+ return transaction(pool,c=>saveDefinitionInTransaction(c,input,actor,id,expectedRevision));
+}
+// Callers that grant ownership/access must commit those changes with the definition.
+export async function saveDefinitionInTransaction(c:SqlClient,input:unknown,actor:string,id?:string,expectedRevision?:number){
+ const sourceId=id?(await getMetric(c,id)).sourceId:undefined;
   const metricId=id||uuid();let config;let previous;let revision=1;
   if(id){
    await c.query('SELECT pg_advisory_xact_lock(hashtext($1))',[sourceId]);
@@ -49,6 +52,9 @@ export async function saveDefinition(pool:pg.Pool,input:unknown,actor:string,id?
    await c.query('UPDATE metric_definition_versions SET config=$3 WHERE metric_id=$1 AND version=$2',[id,previous.version,config]);
   }else{
    config=definition(input);
+   await c.query('SELECT pg_advisory_xact_lock(hashtext($1))',[`metric-key:${config.key}`]);
+   const reserved=await c.query('SELECT 1 FROM metric_registrations WHERE key=$1 AND deleted_at IS NOT NULL',[config.key]);
+   check(!reserved.rowCount,'This deleted metric key is reserved. Use a new key.',409);
    await c.query('INSERT INTO metrics(id,key,version,owner_id) VALUES($1,$2,1,$3)',[metricId,config.key,actor]);
    await c.query('INSERT INTO metric_definition_versions(metric_id,version,config) VALUES($1,1,$2)',[metricId,config]);
   }
@@ -57,7 +63,6 @@ export async function saveDefinition(pool:pg.Pool,input:unknown,actor:string,id?
   }
   await c.query('INSERT INTO metric_activity(id,metric_id,actor_id,action,detail) VALUES($1,$2,$3,$4,$5)',[uuid(),metricId,actor,previous?'settings_updated':'definition_created',{revision,previous:previous?definition(previous):undefined,definition:config}]);
   return getMetric(c,metricId);
- });
 }
 // Reporting changes do not create an empty ingestion version. Snapshots retain the effective policy.
 export async function saveMissingDataPolicy(pool:pg.Pool,id:string,version:number,input:unknown,actor:string,expectedRevision:number){
@@ -143,7 +148,9 @@ export async function ingest(pool:pg.Pool,sourceId:string,mode:string,input:unkn
   check(aligned.rows[0].ok,'Source interval must exactly match one configured base bucket.');
  }
 
- if(projections.length){await c.query(`INSERT INTO metric_dimension_sets(metric_id,version,dimensions) SELECT DISTINCT (p->>'metricId')::uuid,(p->>'version')::int,p->'dimensions' FROM jsonb_array_elements($1::jsonb) p ON CONFLICT DO NOTHING`,[JSON.stringify(projections)]);
+ if(projections.length){
+ await c.query('UPDATE metric_registrations SET has_data=true WHERE metric_id=ANY($1::uuid[]) AND NOT has_data',[[...new Set(projections.map(p=>p.metricId))]]);
+ await c.query(`INSERT INTO metric_dimension_sets(metric_id,version,dimensions) SELECT DISTINCT (p->>'metricId')::uuid,(p->>'version')::int,p->'dimensions' FROM jsonb_array_elements($1::jsonb) p ON CONFLICT DO NOTHING`,[JSON.stringify(projections)]);
  const budgets=await c.query(`SELECT s.metric_id,count(*) n,(v.config->>'maxSeries')::int budget FROM metric_dimension_sets s JOIN metric_definition_versions v ON v.metric_id=s.metric_id AND v.version=s.version WHERE s.metric_id=ANY($1::uuid[]) GROUP BY s.metric_id,s.version,v.config`,[[...new Set(projections.map(p=>p.metricId))]]);check(budgets.rows.every(r=>Number(r.n)<=r.budget),'Series cardinality budget exceeded.');}
  const mayOverlap=mode!=='events'&&projections.length&&(projections.some(p=>p.endsAt)||(await c.query("SELECT 1 FROM metric_record_keys WHERE source_id=$1 AND jsonb_path_exists(payload,'$.projections[*] ? (@.endsAt != null)') LIMIT 1",[sourceId])).rowCount);
  if(mayOverlap){
@@ -162,6 +169,7 @@ export async function coverage(pool:pg.Pool,sourceId:string,input:unknown){retur
  check(m.sourceId===sourceId,'Source not authorized.',403);
  const dims=dimensionValues(r.dimensions,m.dimensions),start=instant(r.startsAt),end=instant(r.endsAt);
  check(end>start,'Invalid coverage range.');
+ await c.query('UPDATE metric_registrations SET has_data=true WHERE metric_id=$1 AND NOT has_data',[m.id]);
  await c.query('INSERT INTO metric_coverage(source_id,metric_id,version,dimensions,starts_at,ends_at) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING',[sourceId,m.id,m.version,dims,start,end]);
  return{ok:true};
 });}

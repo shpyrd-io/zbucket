@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS metric_sources(id uuid PRIMARY KEY,name text NOT NULL
 ALTER TABLE metric_sources ADD COLUMN IF NOT EXISTS last_processed_at timestamptz;
 CREATE TABLE IF NOT EXISTS metrics(id uuid PRIMARY KEY,key text NOT NULL UNIQUE,version integer NOT NULL,owner_id uuid NOT NULL,created_at timestamptz NOT NULL DEFAULT now());
 ALTER TABLE metrics ADD COLUMN IF NOT EXISTS revision integer NOT NULL DEFAULT 1;
+-- Keep registrations after empty-metric deletion so a stable key never changes meaning.
+CREATE TABLE IF NOT EXISTS metric_registrations(key text PRIMARY KEY,metric_id uuid UNIQUE NOT NULL,app_id uuid NOT NULL,request_hash text NOT NULL,has_data boolean NOT NULL DEFAULT false,deleted_at timestamptz,deletion_revision integer,created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS metric_registrations_app ON metric_registrations(app_id,key);
 CREATE TABLE IF NOT EXISTS metric_definition_aliases(original_metric_id uuid NOT NULL,original_version integer NOT NULL,metric_id uuid NOT NULL REFERENCES metrics,version integer NOT NULL,PRIMARY KEY(original_metric_id,original_version));
 CREATE TABLE IF NOT EXISTS metric_legacy_definitions(original_metric_id uuid NOT NULL,original_key text NOT NULL,original_version integer NOT NULL,definition jsonb NOT NULL,metric_id uuid NOT NULL,version integer NOT NULL,PRIMARY KEY(original_metric_id,original_version));
 CREATE TABLE IF NOT EXISTS metric_definition_versions(metric_id uuid REFERENCES metrics,version integer NOT NULL,config jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(metric_id,version));

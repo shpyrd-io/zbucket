@@ -1,10 +1,11 @@
 {
-  "at": "2026-10-09T22:55:35.896Z",
-  "passed": 8,
-  "examples": 19,
-  "metrics": 20,
+  "at": "2026-10-09T23:09:54.615Z",
+  "passed": 9,
+  "examples": 23,
+  "metrics": 22,
   "checks": [
     "Every JSON block parses",
+    "Exact auto-publication guide bodies create, retry, PATCH, DELETE and publish an event dataset with one token",
     "All nine kinds and three input modes: actual guide payloads accepted and published",
     "Decimal totals, weighted ratios, means, minima/maxima, global distinct deduplication and interpolated p95 match guide arithmetic",
     "Latest balance, single account, across-account mean, daily stale carry and exclusive boundary semantics",

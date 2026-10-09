@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-09T23:12:57.592Z",
+  "passed": 13,
+  "checks": [
+    "Explicit opt-in, publisher identity and atomic read/write grants; stale administrator edits cannot erase grants.",
+    "Concurrent identical registration is idempotent; key conflicts, foreign ownership and source/method injection are rejected.",
+    "Metadata edits preserve identity/data contract, enforce revision and survive repeated startup publication.",
+    "Auto-granted credentials ingest and query immediately; queued and processed data both block deletion.",
+    "Empty deletion removes definition/grants, retains audit, supports retries and reserves the stable key.",
+    "Coverage and a durable usage marker block deletion even after data is removed by retention or cleanup.",
+    "Event metrics can self-publish dataset schema and ingest; schema conflicts roll back metric and grants.",
+    "Saved query references block deletion.",
+    "Concurrent ingestion versus deletion has one winner; accepted records never lose their definition.",
+    "Startup retries never restore removed grants; pre-granted dimension scopes are preserved.",
+    "Disabling management takes effect without revoking data access; explicit read/write grants never confer ownership.",
+    "Human definitions are not silently adopted and revoked credentials cannot self-publish.",
+    "Grant-budget exhaustion rejects registration atomically without changing metrics or integration revision."
+  ]
+}

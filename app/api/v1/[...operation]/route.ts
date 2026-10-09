@@ -1,6 +1,7 @@
 import {database} from '@/server/database';
 import {authenticate,admin,checkOrigin,audit,type Principal} from '@/server/access';
 import {integrations,manageIntegration} from '@/server/integrations';
+import {manageMetric} from '@/server/metric-management';
 import {metricGet,metricPost} from '@/server/metric-api';
 import {knowledgeList,documentGet,saveDocument} from '@/server/knowledge';
 import {DomainError} from '@/models/policy';
@@ -17,13 +18,15 @@ async function run(req:Request,ctx:Context){let principal:Principal|undefined;co
   else check(false,'Endpoint not found.',404);
  }else{
   checkOrigin(req,principal);const body=await readBody(req);
-  if(area==='integrations')result=await manageIntegration(pool,principal,body);
+  if(area==='metrics'&&op==='definitions'&&(principal.kind==='integration'||req.method!=='POST')){check(parts.length<=3,'Endpoint not found.',404);result=await manageMetric(pool,principal,req.method,id,body);}
+  else if(req.method!=='POST')check(false,'Method not allowed.',405);
+  else if(area==='integrations')result=await manageIntegration(pool,principal,body);
   else if(area==='metrics')result=await metricPost(pool,principal,parts.slice(1),body,req);
   else if(area==='knowledge'&&op==='documents')result=await saveDocument(pool,principal,{...body,...(id?{id}:{})});
   else if(area==='knowledge'&&op==='reindex'){admin(principal);await pool.query("UPDATE knowledge_documents SET index_status='pending',index_attempts=0 WHERE active");result={queued:true};}
   else check(false,'Endpoint not found.',404);
  }
- const status=result instanceof Response?result.status:req.method==='POST'&&area==='metrics'&&['events','measurements','aggregates','corrections'].includes(op)?202:200;
+ const status=result instanceof Response?result.status:area==='metrics'&&op==='definitions'&&principal.kind==='integration'&&req.method==='POST'&&(result as {created?:boolean})?.created?201:req.method==='POST'&&area==='metrics'&&['events','measurements','aggregates','corrections'].includes(op)?202:200;
  if(principal.kind==='integration')await audit(pool,principal,req.method+' '+area+'/'+(op??''),id??'',status);
  if(result instanceof Response)return result;
  return Response.json(result,{status,headers:{'Cache-Control':'no-store'}});
@@ -32,4 +35,4 @@ async function run(req:Request,ctx:Context){let principal:Principal|undefined;co
  if(status===500)console.error('Warehouse request failed:',e instanceof Error?e.name:'Unknown error');
  return Response.json({error:message},{status,headers:{'Cache-Control':'no-store',...(status===429?{'Retry-After':'60'}:{})}});
  }}
-export const GET=run;export const POST=run;
+export const GET=run;export const POST=run;export const PATCH=run;export const DELETE=run;

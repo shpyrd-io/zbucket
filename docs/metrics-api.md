@@ -40,6 +40,9 @@ All paths below are relative to `/api/v1`.
 | --- | --- | --- |
 | GET `/metrics/catalog?q=…&after=…` | Metric read keys | `{metrics, nextCursor?}`; 50 per page for integrations, ordered by stable key. Search matches name/key. Pass the returned cursor unchanged. |
 | GET `/metrics/definition/{key-or-id}` | Read on metric | `{metric}` containing the current contract and settings. |
+| POST `/metrics/definitions` | `metrics.manageOwn` | `{definition,dataset?}` → 201 created, 200 identical registration retry. |
+| PATCH `/metrics/definitions/{key-or-id}` | `metrics.manageOwn` + creator integration | `{expectedRevision,changes}` → `{metric}`. |
+| DELETE `/metrics/definitions/{key-or-id}` | `metrics.manageOwn` + creator integration; unused metric | `{expectedRevision}` → `{deleted:true,key,id}`. |
 | POST `/metrics/measurements` | Write + configured publisher | `{measurements:[…]}` → 202 receipt. |
 | POST `/metrics/events` | Write on every resulting projection + configured publisher | `{datasetKey,schemaVersion,events:[…]}` → 202 receipt. |
 | POST `/metrics/aggregates` | Write + configured publisher | `{aggregates:[…]}` → 202 receipt. |
@@ -50,11 +53,11 @@ All paths below are relative to `/api/v1`.
 | POST `/metrics/export-query` | Read + export; snapshots if requested | Same query body; JSON download of the query result. |
 | GET `/metrics/snapshots/{id}` | Snapshot grant + current read/scope | Saved integration-owned snapshot row with `query` and `result`. |
 
-No PUT/PATCH/DELETE methods are implemented for these interfaces. Raw NDJSON exports, raw detail, distributions, saved library execution, definitions, datasets and purge are human-session interfaces; a `wh_` token cannot invoke them. Machine clients can build reports from the authorized query data.
+PATCH and DELETE are supported only on the metric definition route described below; PUT is not implemented. Raw NDJSON exports, raw detail, distributions, saved library execution, the standalone dataset endpoint, reporting-policy changes and purge remain human-session interfaces. Machine clients can build reports from authorized query data. Event schemas can be registered as part of own metric creation.
 
 ## Create a metric: actual form order
 
-An administrator first creates the integration, grants the metric key and then opens **Metrics → Add metric**. Read the fields in the following order when guiding someone through the form (paired rows are left-to-right). Dataset/field mappings and filters are used by `events`; direct measurements use fixed envelope names.
+For manual setup, an administrator first creates the integration, grants the metric key and then opens **Metrics → Add metric**. Read the fields in the following order when guiding someone through the form (paired rows are left-to-right). Dataset/field mappings and filters are used by `events`; direct measurements use fixed envelope names.
 
 | Order / form label | Contract field | Hourly bank-balance example |
 | --- | --- | --- |
@@ -83,7 +86,7 @@ An administrator first creates the integration, grants the metric key and then o
 
 Within **Storage and resolution**, the order is: enable policy, Base resolution, retention fields (Base when finer than hour, Hourly when applicable, Daily), Raw retention, Estimated active series. The last field is only a UI capacity estimate; it does not set the metric's series budget. An hourly base has equal base/hour retention. A daily base has equal base/hour/day retention.
 
-This is the equivalent **administrator-only** definition body, useful as a reference for setup; application credentials cannot submit it. Replace `SOURCE_ID` with the integration's source UUID. The route is `POST /api/v1/metrics/definitions` with a human administrator session, not the publishing curl token.
+This is the equivalent **human administrator** definition body for manual setup. For auto-publication, omit `sourceId` and use the application contract below; `sourceId` is forbidden in an application request. Replace `SOURCE_ID` with the integration's source UUID. The route is `POST /api/v1/metrics/definitions` with a human administrator session, not the publishing curl token.
 
 <!-- example: balance-definition -->
 ```json
@@ -116,6 +119,174 @@ This is the equivalent **administrator-only** definition body, useful as a refer
 ```
 
 For a new concept, currency, reducer, publisher, dimensions or resolution/retention contract, use a new metric key. Ordinary edits to name, description, category, status, direction and series budget keep existing data. Missing-data reporting policy is edited separately. Producers should use the stable metric key and **omit `definitionVersion`**; it is legacy compatibility, not a version to select for normal ingestion or reporting. No currency conversion is implicit.
+
+## Auto-publish metric definitions: application API contract
+
+An administrator enables **Integrations → Permissions → Create and manage own metrics** (`metrics.manageOwn: true`). It is false by default. All requests below use `Authorization: Bearer $WAREHOUSE_TOKEN` with the same `wh_` credential as ingestion. The internal `WAREHOUSE_URL` is defined at the top of this guide. No separate definition-management secret is issued.
+
+### 1. Register the immutable contract
+
+`POST /api/v1/metrics/definitions`, `Content-Type: application/json`.
+
+Save the following as `metric-definition.json`. This is a complete, executable request for an hourly balance metric:
+
+<!-- example: auto-balance-definition -->
+```json
+{
+  "definition": {
+    "key": "finance_cash_balance_brl",
+    "name": "Cash balance · BRL",
+    "description": "Bank API point-in-time balance readings per account, observed hourly.",
+    "category": "Finance",
+    "kind": "latest",
+    "unit": "BRL",
+    "inputMode": "measurements",
+    "dimensions": ["account_id"],
+    "timezone": "America/Sao_Paulo",
+    "freshnessSeconds": 7200,
+    "missingData": "keep_previous",
+    "maxSeries": 10000,
+    "storagePolicy": {
+      "baseResolution": "hour",
+      "baseRetentionDays": 90,
+      "hourRetentionDays": 90,
+      "dayRetentionDays": 730,
+      "rawRetentionDays": null
+    },
+    "direction": "neutral",
+    "status": "active"
+  }
+}
+```
+
+```sh
+curl --fail-with-body "$WAREHOUSE_URL/api/v1/metrics/definitions" \
+  -H "Authorization: Bearer $WAREHOUSE_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data-binary @metric-definition.json
+```
+
+**201 response:** `{"created":true,"metric":{...}}`. `metric` is the normalized definition plus `id`, `key`, `sourceId`, `ownerId`, `revision` (initially 1), `version` (legacy, 1), `reportingRevision` and `createdAt`. The source and ownership come from the authenticated integration. Creation and automatic read/write grants are atomic: neither is left behind if validation fails. Integration settings revision also advances, protecting concurrent administrator edits. The existing credential can immediately ingest and query this key.
+
+**200 retry:** `{"created":false,"metric":{...}}` for the same initial normalized request by the same integration. JSON property order and declared dimension order do not matter. The metric key is the registration identity; no `Idempotency-Key` header is required or used for this endpoint. Keep the original registration payload in the application's startup manifest. A retry returns current settings without undoing later edits or restoring access an administrator removed. A different registration body for that key returns **409**; reconcile via PATCH for metadata. This is deliberately not an upsert that replaces the contract.
+
+| Definition field | Required / default / accepted values |
+| --- | --- |
+| `key` | Required, unique across Warehouse; snake_case starting with a lowercase letter, up to 100 characters. Prefer an application prefix. |
+| `name` | Required, nonempty, up to 200 characters. |
+| `kind` | Required: `sum`, `count`, `latest`, `mean`, `ratio`, `min`, `max`, `distinct`, `p95`. See recipes below. |
+| `unit` | Required, nonempty, up to 40 characters; no implicit currency conversion. |
+| `inputMode` | Required: `measurements`, `events`, `aggregates`. Aggregates do not support `latest`, `distinct` or `p95`. |
+| `description`, `category` | Optional; empty description, `operations` category. Description is capped at 4,000 characters. |
+| `dimensions` | Optional `[]`; up to eight unique field names. Every record supplies exactly these dimensions. |
+| `timezone` | Optional `UTC`; valid IANA reporting timezone. |
+| `datasetKey` | Optional, defaults to metric key. Events require a registered dataset on this integration. |
+| `valueField`, `numeratorField`, `denominatorField`, `identityField` | Event field mappings; defaults `value`, `numerator`, `denominator`, `identity`. Measurements use fixed envelope names. |
+| `filters` | Optional `{}`; up to eight field/string pairs for event filtering. |
+| `freshnessSeconds` | Default 86,400; integer 60–31,536,000. |
+| `missingData` | Default `leave_gaps`; `keep_previous` only for `latest`. Chosen here; later changes use the separate administrator Reporting policy interface. |
+| `maxSeries` | Default 10,000; integer 1–100,000. This is a dimension-tuple budget. |
+| `storagePolicy` | Optional. Five fields shown above; base resolution `minute`, `5_minutes`, `15_minutes`, `hour` or `day`. Retentions 1–36,500 days, increasing from raw through daily; `rawRetentionDays:null` keeps raw detail. Hour/day duplicate retentions must agree. Exact `distinct`/`p95` require raw detail and do not accept a policy. |
+| `status` | Default `draft`; `draft`, `active`, `paused`, `retired`. Set `active` to ingest immediately. |
+| `direction` | Default `neutral`; `higher`, `lower`, `neutral`. A descriptive preference, not an arithmetic change. |
+
+Unknown fields are rejected. Do not send `sourceId`, `ownerId`, `id`, `version`, `revision`, permissions or another integration's identity. Existing read/write grants never imply definition ownership. Metrics created manually are not adopted, even if this integration is their publisher. Another integration's key collision returns 409 without disclosing its definition.
+
+### Event schemas without a manual setup step
+
+For `inputMode:"events"`, creation may additionally include `dataset:{version,schema}`. It registers that schema under the authenticated integration and `definition.datasetKey` in the same transaction. Version defaults to 1; schema has 1–50 field names with `string`, `decimal` or `datetime` types. Dimensions are strings; value/numerator/denominator mappings are decimals; distinct identity is a string. Existing `(source,datasetKey,version)` must match exactly. If `dataset` is omitted, compatible schemas must already exist. This does not grant access to another source or to the standalone administrative dataset endpoint.
+
+<!-- example: auto-event-definition -->
+```json
+{
+  "definition": {
+    "key": "commerce_order_revenue",
+    "name": "Order revenue",
+    "kind": "sum",
+    "unit": "BRL",
+    "inputMode": "events",
+    "datasetKey": "commerce_orders",
+    "valueField": "amount",
+    "dimensions": ["channel"],
+    "status": "active"
+  },
+  "dataset": {
+    "version": 1,
+    "schema": {"amount":"decimal","channel":"string"}
+  }
+}
+```
+
+After registration, send the following to `POST /api/v1/metrics/events`. Every declared dataset field is required. Occurrence time and event identity belong in the event envelope, outside `data`.
+
+<!-- example: auto-event-ingestion -->
+```json
+{
+  "datasetKey":"commerce_orders",
+  "schemaVersion":1,
+  "events":[{
+    "eventId":"order-1042",
+    "occurredAt":"2026-10-08T10:00:00-03:00",
+    "data":{"amount":"250.50","channel":"online"}
+  }]
+}
+```
+
+Reuse the same schema across compatible event metrics to project multiple indicators from one event. The token needs publish access to **all** matching projections. New metric creation does not backfill earlier events; publish definitions before their records. Dataset schemas remain available after an unused metric is deleted because other metrics may share them.
+
+### 2. Read and edit settings
+
+Read `GET /api/v1/metrics/definition/{key-or-id}` using a metric read grant. Use the returned `metric.revision`, not the legacy definition version, as `expectedRevision`.
+
+`PATCH /api/v1/metrics/definitions/{key-or-id}` accepts exactly `expectedRevision` and nonempty `changes`. Only `name`, `description`, `category`, `status`, `direction`, `maxSeries` are editable. All six are optional within `changes`; omitted settings are preserved. `maxSeries` cannot be below the number of known dimension combinations. There is no contract change, new metric version, empty data partition or token rotation.
+
+<!-- example: auto-metric-patch -->
+```json
+{
+  "expectedRevision":1,
+  "changes":{
+    "name":"Cash balance · bank accounts",
+    "description":"Hourly bank account balances in BRL.",
+    "category":"Finance",
+    "direction":"neutral",
+    "maxSeries":20000
+  }
+}
+```
+
+```sh
+curl --fail-with-body -X PATCH "$WAREHOUSE_URL/api/v1/metrics/definitions/finance_cash_balance_brl" \
+  -H "Authorization: Bearer $WAREHOUSE_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data-binary @metric-patch.json
+```
+
+**200:** `{"metric":{...}}` with the same ID/key and incremented `revision`. A stale revision or any attempted contract field edit returns **409** without changes. After an uncertain PATCH response, GET current settings before retrying; do not blindly overwrite a concurrent change. To change units, kind, source, input mode, dimensions, field mappings, filters, freshness, timezone or storage contract, create a new metric with a new stable key.
+
+### 3. Delete an unused own metric
+
+`DELETE /api/v1/metrics/definitions/{key-or-id}`, JSON body `{"expectedRevision":2}` for a metric currently at revision 2.
+
+```sh
+curl --fail-with-body -X DELETE "$WAREHOUSE_URL/api/v1/metrics/definitions/finance_cash_balance_brl" \
+  -H "Authorization: Bearer $WAREHOUSE_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"expectedRevision":2}'
+```
+
+**200:** `{"deleted":true,"key":"finance_cash_balance_brl","id":"..."}`. Only the creator integration with management permission can delete. The metric must never have accepted a measurement or coverage; pending batches already count. Retention or purge does not make a used metric deletable again. Saved queries, evidence snapshots, exports and other references also prevent deletion. Ingestion/publication and deletion are serialized so accepted measurements cannot lose their definition.
+
+Deletion removes the metric definition and the creator's grants, retaining its audit trail and key reservation. A repeated DELETE with the same revision returns 200. The deleted stable key cannot be reused, preventing old credentials or application retries from pointing at a different concept. Other integrations' grants are not expanded; a grant to the deleted key resolves no metric. Use a new key if replacing a deleted definition. To stop a metric with data, PATCH `status:"retired"`; historical queries continue working. Deleting measurements by period/dimension remains an administrator-only purge operation.
+
+### Errors and access lifecycle
+
+- **401:** expired, revoked or invalid credential.
+- **403:** management disabled for this integration; existing integrations default to disabled.
+- **404:** edit/delete target missing or owned by another integration. Read/write access alone is insufficient.
+- **409:** key collision, changed registration payload, reserved deleted key, stale revision, immutable field edit, dataset conflict, metric in use or concurrent lock timeout. Read the error and reconcile; only transient contention should be retried unchanged.
+- **422:** malformed request, missing revision, unsupported fields, invalid schema/definition or grant list at its 500-key limit. Nothing was created or granted.
+
+Revoking `manageOwn` immediately blocks subsequent create/edit/delete requests; existing read/write/snapshot/export grants remain separate. Credential rotation retains integration ownership. Management never enables arbitrary permission changes, transfers ownership or alters another integration's metrics.
 
 ## Choose a kind and input mode
 
