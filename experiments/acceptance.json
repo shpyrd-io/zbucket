@@ -1,6 +1,6 @@
 {
-  "at": "2026-10-10T17:47:28.975Z",
-  "passed": 13,
+  "at": "2026-10-10T21:00:41.705Z",
+  "passed": 14,
   "checks": [
     "Removed export creation, status, download and JSON attachment endpoints return 404 for users and integrations; no export queue is created",
     "One integration credential publishes metrics and documents, reads data and receipts; no separate producer secret",
@@ -14,7 +14,8 @@
     "Default-deny catalog/query/document access and application request quota",
     "Event fanout checks every derived metric before accepting a batch and uses the same application credential",
     "Unknown bearer credentials, cross-origin administration and disabled integrations are rejected",
-    "Document history retains current plus 20 revisions; archived content is removed from discovery"
+    "Document history retains current plus 20 revisions; archived content is removed from discovery",
+    "Stable collection/key reads preserve exact identifiers, UUID compatibility, title edits, history and archived access; collection/history permissions remain enforced"
   ],
   "scope": "isolated synthetic schema",
   "providers": "no real provider calls"

@@ -1,4 +1,5 @@
 import type pg from 'pg';
+import type {KnowledgeIdentity} from '@/models/knowledge-links';
 import {v7 as uuid} from 'uuid';
 import {check,object,text,canonical} from '@/models/metrics/validation';
 import {transaction} from './db/metrics';
@@ -14,9 +15,12 @@ export async function embed(texts:string[],type:'query'|'document'){
 }
 function readable(p:Principal){return p.kind==='user'?null:p.permissions.knowledge.readCollections;}
 function writable(p:Principal,collection:string,old?:Document){if(p.kind==='user'){admin(p);return;}check(p.permissions.knowledge.writeCollections.includes(collection),'Collection write access denied.',403);check(!old||old.owner_app_id===p.id,'This document belongs to another publisher.',403);}
-export async function documentGet(pool:pg.Pool,p:Principal,id:string,history=false){
+export async function documentGet(pool:pg.Pool,p:Principal,reference:string|KnowledgeIdentity,history=false){
  if(history&&p.kind==='integration')check(p.permissions.knowledge.history,'Document history access denied.',403);
- const d=(await pool.query('SELECT * FROM knowledge_documents WHERE id::text=$1 AND ($2::text[] IS NULL OR collection=ANY($2))',[id,readable(p)])).rows[0] as Document|undefined;check(d,'Document not found.',404);
+ const rows=typeof reference==='string'
+  ? await pool.query('SELECT * FROM knowledge_documents WHERE id::text=$1 AND ($2::text[] IS NULL OR collection=ANY($2))',[reference,readable(p)])
+  : await pool.query('SELECT * FROM knowledge_documents WHERE collection=$1 AND key=$2 AND ($3::text[] IS NULL OR collection=ANY($3))',[reference.collection,reference.key,readable(p)]);
+ const d=rows.rows[0] as Document|undefined;check(d,'Document not found.',404);
  if(history)return {document:d,versions:(await pool.query('SELECT revision,document,reason,created_at FROM knowledge_revisions WHERE document_id=$1 ORDER BY revision DESC',[d.id])).rows};return d;
 }
 export async function knowledgeList(pool:pg.Pool,p:Principal,params:URLSearchParams){

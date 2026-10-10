@@ -53,6 +53,7 @@ except WarehouseError as error:
 checks.append('Empty deletion, catalog and rejection of used-metric deletion')
 doc = c.knowledge.save({'collection': 'sample', 'key': 'feed', 'title': 'Pineapple feed runbook', 'content': '# Pineapple\n\nRetry with the same IDs.', 'source_type': 'runbook'})
 assert c.knowledge.save({'collection': 'sample', 'key': 'feed', 'title': 'Pineapple feed runbook', 'content': '# Pineapple\n\nRetry with the same IDs.', 'source_type': 'runbook'})['revision'] == 1
+assert c.knowledge.get_by_key('sample', 'feed')['id'] == doc['id']
 assert doc['id'] in [d['id'] for d in c.knowledge.search('Pineapple', collection='sample')['documents']]
 assert len(list(c.knowledge.iter_documents(collection='sample'))) == 1
 changed = c.knowledge.save({**doc, 'content': '# Pineapple\n\nKeep the original timestamp.'})
@@ -67,6 +68,7 @@ assert not archived['active']
 assert c.knowledge.search('Pineapple', collection='sample')['documents'] == []
 assert list(c.knowledge.iter_documents(collection='sample')) == []
 assert c.knowledge.get(doc['id'])['active'] is False
+assert c.knowledge.get_by_key('sample', 'feed')['active'] is False
 assert len(c.knowledge.history(doc['id'])['versions']) == 3
 restored = c.knowledge.restore(doc['id'], revision=3, restore_revision=1)
 assert restored['active'] and restored['content'] == doc['content']

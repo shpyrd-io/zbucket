@@ -182,6 +182,13 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(self.client.knowledge.search("saldo? & bancos", collection="sample")["mode"], "hybrid")
         self.assertIn("q=saldo%3F+%26+bancos", self.server.requests[-1][1])
 
+    def test_knowledge_stable_identity_lookup(self):
+        self.reply({"id": "d", "collection": "finance", "key": "bank/cash?#%"})
+        self.assertEqual(self.client.knowledge.get_by_key("finance", "bank/cash?#%")['id'], 'd')
+        self.assertIn('/knowledge/documents/by-key?', self.server.requests[-1][1])
+        self.assertIn('key=bank%2Fcash%3F%23%25', self.server.requests[-1][1])
+        self.assertIn('collection=finance', self.server.requests[-1][1])
+
     def test_knowledge_revisions_and_archive(self):
         self.reply({"id": "d", "revision": 2, "active": False})
         self.assertFalse(self.client.knowledge.archive("d", revision=1)["active"])

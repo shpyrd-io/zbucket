@@ -303,6 +303,9 @@ class Knowledge:
     def get(self, document_id: str) -> dict[str, Any]:
         return self._client._request("GET", "knowledge/documents/" + _segment(document_id), retry_safe=True)
 
+    def get_by_key(self, collection: str, key: str) -> dict[str, Any]:
+        return self._client._request("GET", "knowledge/documents/by-key", params={"collection": collection, "key": key}, retry_safe=True)
+
     def save(self, document: Mapping[str, Any]) -> dict[str, Any]:
         """Full replacement, not PATCH. Supply current revision for changes."""
         return self._client._request("POST", "knowledge/documents", document)

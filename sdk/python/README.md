@@ -70,7 +70,10 @@ Bodies follow the Warehouse API contract's camelCase field names; Python method 
 
 Use `groupAfter` from the returned breakdown for grouped query pagination; preserve all other query fields. Catalog iterators follow `nextCursor`; search returns a bounded ranked set, not an exhaustive iterator. `snapshot:true` requires a separate grant.
 
-## Knowledge example
+## Knowledge
+
+Read by stable identity with `client.knowledge.get_by_key("general", "copy_guidelines")`. Browser links use `/knowledge/{collection}/{key}` with each value URL-encoded, for example `/knowledge/general/copy_guidelines`. UUID-based `get()` and existing links remain supported; edits still use the returned ID and revision.
+ example
 
 An administrator must first create the collection and grant this integration read/write, search, history and archive as appropriate. The metrics-only sample credential deliberately has no document permissions.
 

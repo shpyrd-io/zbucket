@@ -99,5 +99,29 @@ try{
  await call('knowledge/documents',{id:historyDoc.id,revision:historyDoc.revision,action:'archive'});
  assert.equal((await call('knowledge/documents?q=History')).documents.some((d:{id:string})=>d.id===historyDoc.id),false);
  checks.push('Document history retains current plus 20 revisions; archived content is removed from discovery');
+ const stable=(key:string,collection='general',history=false)=>'knowledge/documents/by-key'+(history?'/history':'')+'?'+new URLSearchParams({collection,key});
+ const publicDoc=await call('knowledge/documents',{collection:'general',key:'shared-guidelines',title:'Shared guidelines',content:'General collection'});
+ const privateDoc=await call('knowledge/documents',{collection:'private',key:publicDoc.key,title:'Private guidelines',content:'Private collection'});
+ assert.equal((await call(stable(publicDoc.key),undefined,readerToken)).id,publicDoc.id);
+ assert.equal((await call(stable(publicDoc.key,'private'))).id,privateDoc.id);
+ await call(stable(publicDoc.key,'private'),undefined,readerToken,404);
+ await call(stable('unknown'),undefined,readerToken,404);
+ await call('knowledge/documents/by-key?key=shared-guidelines',undefined,readerToken,422);
+ await call('knowledge/documents/by-key',{collection:'general',key:publicDoc.key},readerToken,405);
+ const stableReader=await call('integrations',{action:'create',name:'Exact document reader',permissions:{...deny,knowledge:{...deny.knowledge,readCollections:['general']}}});
+ const stableToken=(await call('integrations',{action:'issue',id:stableReader.id,days:1})).secret;
+ assert.equal((await call(stable(publicDoc.key),undefined,stableToken)).id,publicDoc.id);
+ await call(stable(publicDoc.key,'general',true),undefined,stableToken,403);
+ const changedDoc=await call('knowledge/documents',{id:publicDoc.id,revision:1,title:'Renamed guidelines',content:'Updated content'});
+ assert.equal((await call(stable(publicDoc.key),undefined,readerToken)).title,changedDoc.title);
+ assert.equal((await call('knowledge/documents/'+publicDoc.id,undefined,readerToken)).revision,2);
+ assert.equal((await call(stable(publicDoc.key,'general',true),undefined,readerToken)).versions.length,2);
+ await call('knowledge/documents',{id:publicDoc.id,revision:2,action:'archive'});
+ assert.equal((await call(stable(publicDoc.key),undefined,readerToken)).active,false);
+ for(const key of ['bank/cash?currency=BRL#total','literal%2Fvalue','ação','..']){
+  const special=await call('knowledge/documents',{collection:'general',key,title:'Special identity',content:'Exact key fixture'});
+  assert.equal((await call(stable(key),undefined,readerToken)).id,special.id);
+ }
+ checks.push('Stable collection/key reads preserve exact identifiers, UUID compatibility, title edits, history and archived access; collection/history permissions remain enforced');
  await mkdir('experiments',{recursive:true});const report={at:new Date().toISOString(),passed:checks.length,checks,scope:'isolated synthetic schema',providers:'no real provider calls'};await writeFile('experiments/acceptance.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report,null,2));
 }finally{await (await database()).end();await root.query(`DROP SCHEMA ${schema} CASCADE`);await root.end();}
