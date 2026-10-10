@@ -60,7 +60,6 @@ Bodies follow the Warehouse API contract's camelCase field names; Python method 
 | Completeness | `metrics.coverage(body)`; only declare actual source coverage |
 | Receipt | `metrics.receipt(id)`, `metrics.wait_for_ingestion(id, timeout=120, poll_interval=1)` |
 | Query/comparison | `metrics.query(body)` |
-| Bounded JSON export | `metrics.export_query(body)` |
 | Saved snapshot | `metrics.snapshot(id)` |
 | Document catalog | `knowledge.list(collection=None, after=None)`, `knowledge.iter_documents(collection=None)` |
 | Hybrid search | `knowledge.search(text, collection=None)` |
@@ -69,7 +68,7 @@ Bodies follow the Warehouse API contract's camelCase field names; Python method 
 | Archive | `knowledge.archive(id, revision=1, reason="…")` |
 | Restore | `knowledge.restore(id, revision=2, restore_revision=1, reason="…")` |
 
-Use `groupAfter` from the returned breakdown for grouped query pagination; preserve all other query fields. Catalog iterators follow `nextCursor`; search returns a bounded ranked set, not an exhaustive iterator. `snapshot:true` and exports require separate grants.
+Use `groupAfter` from the returned breakdown for grouped query pagination; preserve all other query fields. Catalog iterators follow `nextCursor`; search returns a bounded ranked set, not an exhaustive iterator. `snapshot:true` requires a separate grant.
 
 ## Knowledge example
 

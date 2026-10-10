@@ -50,10 +50,9 @@ All paths below are relative to `/api/v1`.
 | GET `/metrics/ingestions/{id}` | Same integration that submitted the batch | `{id,status,recordCount,error,createdAt}`. |
 | POST `/metrics/coverage` | Write + configured publisher | One metric/dimension tuple and a fully received interval → `{ok:true}`. |
 | POST `/metrics/query` | Read; snapshots grant when requested | `MetricQuery` → total, time series, optional groups/comparison/snapshot. |
-| POST `/metrics/export-query` | Read + export; snapshots if requested | Same query body; JSON download of the query result. |
 | GET `/metrics/snapshots/{id}` | Snapshot grant + current read/scope | Saved integration-owned snapshot row with `query` and `result`. |
 
-PATCH and DELETE are supported only on the metric definition route described below; PUT is not implemented. Raw NDJSON exports, raw detail, distributions, saved library execution, the standalone dataset endpoint, reporting-policy changes and purge remain human-session interfaces. Machine clients can build reports from authorized query data. Event schemas can be registered as part of own metric creation.
+PATCH and DELETE are supported only on the metric definition route described below; PUT is not implemented. Raw detail, distributions, saved library execution, the standalone dataset endpoint, reporting-policy changes and purge remain human-session interfaces. Machine clients can build reports from authorized query data. Event schemas can be registered as part of own metric creation.
 
 ## Create a metric: actual form order
 
@@ -274,7 +273,7 @@ curl --fail-with-body -X DELETE "$WAREHOUSE_URL/api/v1/metrics/definitions/finan
   --data '{"expectedRevision":2}'
 ```
 
-**200:** `{"deleted":true,"key":"finance_cash_balance_brl","id":"..."}`. Only the creator integration with management permission can delete. The metric must never have accepted a measurement or coverage; pending batches already count. Retention or purge does not make a used metric deletable again. Saved queries, evidence snapshots, exports and other references also prevent deletion. Ingestion/publication and deletion are serialized so accepted measurements cannot lose their definition.
+**200:** `{"deleted":true,"key":"finance_cash_balance_brl","id":"..."}`. Only the creator integration with management permission can delete. The metric must never have accepted a measurement or coverage; pending batches already count. Retention or purge does not make a used metric deletable again. Saved queries, evidence snapshots and other references also prevent deletion. Ingestion/publication and deletion are serialized so accepted measurements cannot lose their definition.
 
 Deletion removes the metric definition and the creator's grants, retaining its audit trail and key reservation. A repeated DELETE with the same revision returns 200. The deleted stable key cannot be reused, preventing old credentials or application retries from pointing at a different concept. Other integrations' grants are not expanded; a grant to the deleted key resolves no metric. Use a new key if replacing a deleted definition. To stop a metric with data, PATCH `status:"retired"`; historical queries continue working. Deleting measurements by period/dimension remains an administrator-only purge operation.
 
@@ -286,7 +285,7 @@ Deletion removes the metric definition and the creator's grants, retaining its a
 - **409:** key collision, changed registration payload, reserved deleted key, stale revision, immutable field edit, dataset conflict, metric in use or concurrent lock timeout. Read the error and reconcile; only transient contention should be retried unchanged.
 - **422:** malformed request, missing revision, unsupported fields, invalid schema/definition or grant list at its 500-key limit. Nothing was created or granted.
 
-Revoking `manageOwn` immediately blocks subsequent create/edit/delete requests; existing read/write/snapshot/export grants remain separate. Credential rotation retains integration ownership. Management never enables arbitrary permission changes, transfers ownership or alters another integration's metrics.
+Revoking `manageOwn` immediately blocks subsequent create/edit/delete requests; existing read/write/snapshot grants remain separate. Credential rotation retains integration ownership. Management never enables arbitrary permission changes, transfers ownership or alters another integration's metrics.
 
 ## Choose a kind and input mode
 
@@ -676,7 +675,7 @@ Omit `groupBy` for the combined series; add `dimensions:{"campaign_id":"campaign
 
 A response contains the metric definition; `value`, `count`, `numerator`, `denominator`; normalized `startsAt`/`endsAt`; `quality`, `reason` when applicable; `generation`, `lastReceivedAt`, `coverageEndsAt`; and `series:[{startsAt,value,count,quality,…}]`. Resolution queries also return `interval`, `aggregation`, `resolution`; grouped queries add `groups`, `breakdown`, and display metadata. Optional comparisons contain `value`, `absolute`, `relative`, quality, boundaries and series/groups. Relative change is a percentage (e.g. `"10"` means +10%) and is null when the previous value is not positive or either result is unavailable.
 
-Values are decimal strings or null; keep exact strings for exports and use a decimal library for financial calculations. `count` describes engine observations/contributions, not necessarily the business count: for `ad_impressions`, read `value`, not `count`, for the impression total. Bucket timestamps are ISO instants; format labels in the metric's timezone. Respect `groupComplete`, pagination and any Other group before presenting a subset as a total.
+Values are decimal strings or null; keep exact strings when serializing results and use a decimal library for financial calculations. `count` describes engine observations/contributions, not necessarily the business count: for `ad_impressions`, read `value`, not `count`, for the impression total. Bucket timestamps are ISO instants; format labels in the metric's timezone. Respect `groupComplete`, pagination and any Other group before presenting a subset as a total.
 
 | Quality | Interpretation |
 | --- | --- |
@@ -688,11 +687,11 @@ Values are decimal strings or null; keep exact strings for exports and use a dec
 
 Snapshot metadata includes `observedAt`, `oldestObservedAt`, `knownCount`, `expectedCount`, `staleCount` where available. The latest received time is ingestion time, not necessarily the observation time. A step chart is appropriate for carried snapshots; a chart must not relabel stale values as newly observed.
 
-### Save evidence or export
+### Save evidence
 
 Add `"snapshot":true` to a successful query body to preserve its value, definition, quality, comparison and boundaries. GET `/metrics/snapshots/{snapshotId}` returns an integration-owned record whose `result` is the saved query response. Current read and dimension permissions are checked again. A live query/chart changes on refresh; a saved snapshot does not.
 
-POST the same query body to `/metrics/export-query` for a JSON attachment. This is a bounded query export, not a bulk raw-data stream. Do not implement a CSV export by converting decimal strings through floating point.
+Applications retrieve report data through POST `/metrics/query`, with the same permissions, pagination and query budgets. Warehouse does not generate or store downloadable export files.
 
 ## Resolution, retention and operational limits
 

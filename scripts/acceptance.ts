@@ -8,11 +8,11 @@ await root.query(`CREATE SCHEMA ${schema}`);url.searchParams.set('options',`-c s
 const {GET,POST}=await import('../app/api/v1/[...operation]/route');const {database}=await import('../src/server/database');const {processMetricBatch}=await import('../src/server/metrics/worker');const {indexOne}=await import('../src/server/knowledge');
 const checks:string[]=[];
 async function call(path:string,body?:unknown,token?:string,status=200){const headers:Record<string,string>={};if(token)headers.Authorization='Bearer '+token;if(body)headers['Content-Type']='application/json';const r=await(body?POST:GET)(new Request('http://localhost/api/v1/'+path,{method:body?'POST':'GET',headers,body:body?JSON.stringify(body):undefined}),{params:Promise.resolve({operation:path.split('?')[0].split('/')})});const value=await r.json();assert.equal(r.status,status,`${path}: ${JSON.stringify(value)}`);return value;}
-const deny={metrics:{read:[],write:[],dimensions:{},snapshots:false,export:false},knowledge:{readCollections:[],writeCollections:[],search:false,history:false,archive:false}};
+const deny={metrics:{read:[],write:[],dimensions:{},snapshots:false},knowledge:{readCollections:[],writeCollections:[],search:false,history:false,archive:false}};
 try{
  await call('session');const pool=await database();
  await call('integrations',{action:'collection',key:'private',name:'Private CRM'});
- const grants={metrics:{read:['cash_balance_brl'],write:['cash_balance_brl'],dimensions:{},snapshots:true,export:true},knowledge:{readCollections:['general'],writeCollections:['general'],search:true,history:true,archive:true}};
+ const grants={metrics:{read:['cash_balance_brl'],write:['cash_balance_brl'],dimensions:{},snapshots:true},knowledge:{readCollections:['general'],writeCollections:['general'],search:true,history:true,archive:true}};
  const tower=await call('integrations',{action:'create',name:'Control Tower',permissions:grants});
  const r=await call('integrations',{action:'issue',id:tower.id,days:30});const token=r.secret;assert.ok(token.startsWith('wh_'));
  const settings=await call('integrations'),app=settings.apps.find((a:{id:string})=>a.id===tower.id);
@@ -25,6 +25,14 @@ try{
  await processMetricBatch(pool);assert.equal((await call('metrics/ingestions/'+receipt.id,undefined,token)).status,'completed');
  const q={metricId:metric.key,startsAt:'2026-10-08T00:00:00Z',endsAt:'2026-10-09T00:00:00Z',interval:'hour',aggregation:'sum'};
  assert.equal(Number((await call('metrics/query',q,token)).value),200000);
+ for(const credential of [undefined,token]){
+  await call('metrics/exports',q,credential,404);
+  await call('metrics/export-query',q,credential,404);
+  await call('metrics/exports/'+receipt.id,undefined,credential,404);
+  await call('metrics/exports/'+receipt.id+'/download',undefined,credential,404);
+ }
+ assert.equal((await pool.query("SELECT to_regclass($1) AS name",[schema+'.metric_exports'])).rows[0].name,null);
+ checks.push('Removed export creation, status, download and JSON attachment endpoints return 404 for users and integrations; no export queue is created');
  const doc=await call('knowledge/documents',{collection:'general',key:'tower/cash',title:'Cash balance integration',content:'# Cash balances\n\nCollect bank snapshots every hour.',tags:['banking']},token);
  assert.equal((await call('knowledge/documents/'+doc.id,undefined,token)).revision,1);
  checks.push('One integration credential publishes metrics and documents, reads data and receipts; no separate producer secret');

@@ -271,9 +271,6 @@ class Metrics:
     def query(self, query: Mapping[str, Any]) -> dict[str, Any]:
         return self._client._request("POST", "metrics/query", query, retry_safe=not query.get("snapshot"))
 
-    def export_query(self, query: Mapping[str, Any]) -> dict[str, Any]:
-        return self._client._request("POST", "metrics/export-query", query, retry_safe=not query.get("snapshot"))
-
     def snapshot(self, snapshot_id: str) -> dict[str, Any]:
         return self._client._request("GET", "metrics/snapshots/" + _segment(snapshot_id), retry_safe=True)
 

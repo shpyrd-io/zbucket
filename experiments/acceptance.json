@@ -1,7 +1,8 @@
 {
-  "at": "2026-10-09T23:10:42.635Z",
-  "passed": 12,
+  "at": "2026-10-10T17:47:28.975Z",
+  "passed": 13,
   "checks": [
+    "Removed export creation, status, download and JSON attachment endpoints return 404 for users and integrations; no export queue is created",
     "One integration credential publishes metrics and documents, reads data and receipts; no separate producer secret",
     "Document retries, optimistic revisions, restore, immediate text search and vector indexing with deterministic fixture",
     "Immutable metric contract and metadata edits retain measurements",

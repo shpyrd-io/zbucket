@@ -31,7 +31,7 @@ try {
  ];
  const keys=specs.map(s=>'gallery_'+s.key);
  let app=(await pool.query("SELECT * FROM warehouse_apps WHERE name='Chart gallery · Fictional company'")).rows[0];
- if(!app){const made=await manageIntegration(pool,actor,{action:'create',name:'Chart gallery · Fictional company',permissions:{metrics:{read:keys,write:keys,dimensions:{},snapshots:true,export:true},knowledge:{readCollections:[],writeCollections:[],search:false,history:false,archive:false}}});app=(await pool.query('SELECT * FROM warehouse_apps WHERE id=$1',[(made as {id:string}).id])).rows[0];}
+ if(!app){const made=await manageIntegration(pool,actor,{action:'create',name:'Chart gallery · Fictional company',permissions:{metrics:{read:keys,write:keys,dimensions:{},snapshots:true},knowledge:{readCollections:[],writeCollections:[],search:false,history:false,archive:false}}});app=(await pool.query('SELECT * FROM warehouse_apps WHERE id=$1',[(made as {id:string}).id])).rows[0];}
  const seeded=(await pool.query("SELECT created_at FROM metrics WHERE key='gallery_revenue'")).rows[0];
  const anchor=new Date(seeded?.created_at??Date.now());
  const end=new Date(Date.UTC(anchor.getUTCFullYear(),anchor.getUTCMonth(),1));

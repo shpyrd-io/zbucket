@@ -6,7 +6,6 @@ env:
   WAREHOUSE_ACCESS: shpyrd
   APP_ORIGIN: https://platform-warehouse.shpyrd.app
   VOYAGE_MODEL: voyage-4
-  METRICS_EXPORT_DIRECTORY: /data/exports
 build:
   stack: full
   env:
@@ -18,11 +17,5 @@ processes:
     healthCheck:
       path: /api/health
       gracePeriod: 90s
-    volumes:
-      - name: exports
-        path: /data/exports
   worker:
     size: shared-m
-    volumes:
-      - name: exports
-        path: /data/exports

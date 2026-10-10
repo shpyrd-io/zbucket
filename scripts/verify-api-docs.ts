@@ -35,7 +35,7 @@ try{
  ];
  const keys=['cash_balance_brl',...kinds.map(r=>r[0])];
  await call('integrations',{action:'collection',key:'finance',name:'Finance'});
- const permissions={metrics:{manageOwn:true,read:keys,write:keys,dimensions:{},snapshots:true,export:true},knowledge:{readCollections:['finance'],writeCollections:['finance'],search:true,history:true,archive:true}};
+ const permissions={metrics:{manageOwn:true,read:keys,write:keys,dimensions:{},snapshots:true},knowledge:{readCollections:['finance'],writeCollections:['finance'],search:true,history:true,archive:true}};
  const app=await call('integrations',{action:'create',name:'API documentation fixtures',permissions});const token=(await call('integrations',{action:'issue',id:app.id,days:1})).secret;
  const auto=await call('metrics/definitions',example('auto-balance-definition'),token,201);
  assert.equal((await call('metrics/definitions',example('auto-balance-definition'),token)).metric.id,auto.metric.id);
@@ -68,10 +68,9 @@ try{
  checks.push('Latest balance, single account, across-account mean, daily stale carry and exclusive boundary semantics');
  const compared=await call('metrics/query',query,token);assert.equal(Number(compared.value),10000);assert.equal(compared.groups.length,1);assert.equal(compared.comparison.value,null);
  const snapshot=await call('metrics/query',{...query,snapshot:true},token);assert.equal((await call('metrics/snapshots/'+snapshot.snapshotId,undefined,token)).result.value,compared.value);
- assert.equal((await call('metrics/export-query',query,token)).value,compared.value);
  assert.equal((await call('metrics/measurements',example('balances'),token,202)).duplicates,2);
  await call('metrics/coverage',example('sales-coverage'),token);assert.equal((await call('metrics/query',q('sales_revenue_brl'),token)).quality,'complete');
- checks.push('Comparisons, grouped results, saved snapshots, JSON exports, receipt deduplication and declared coverage');
+ checks.push('Comparisons, grouped results, saved snapshots, receipt deduplication and declared coverage');
  await call('metrics/corrections',example('balance-correction'),token,202);while(await processMetricBatch(pool)){}
  assert.equal(Number((await call('metrics/query',example('balance-query'),token)).value),201000);
  await call('metrics/corrections',example('balance-retraction'),token,202);while(await processMetricBatch(pool)){}

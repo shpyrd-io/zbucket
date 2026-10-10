@@ -82,7 +82,6 @@ export async function manageMetric(pool:pg.Pool,p:Principal,method:string,id:str
       UNION ALL SELECT 1 FROM metric_aggregate_states WHERE metric_id=$1
       UNION ALL SELECT 1 FROM metric_coverage WHERE metric_id=$1
       UNION ALL SELECT 1 FROM metric_purges WHERE metric_id=$1
-      UNION ALL SELECT 1 FROM metric_exports WHERE metric_id=$1
       UNION ALL SELECT 1 FROM metric_query_snapshots WHERE metric_id=$1
       UNION ALL SELECT 1 FROM warehouse_snapshots WHERE metric_key=$2
       UNION ALL SELECT 1 FROM metric_goals WHERE metric_id=$1
@@ -90,7 +89,7 @@ export async function manageMetric(pool:pg.Pool,p:Principal,method:string,id:str
       UNION ALL SELECT 1 FROM metric_links WHERE metric_id=$1
       UNION ALL SELECT 1 FROM metric_definition_aliases WHERE metric_id=$1 OR original_metric_id=$1
       UNION ALL SELECT 1 FROM metric_library WHERE config#>>'{query,query,metricId}' IN($1::text,$2) LIMIT 1`,[owned.metric_id,owned.key]);
-    check(!used.rowCount,'Metric has data, evidence, exports or saved references. Remove unused references or retire the metric instead.',409);
+    check(!used.rowCount,'Metric has data, evidence or saved references. Remove unused references or retire the metric instead.',409);
     await c.query('DELETE FROM metric_retention_watermarks WHERE metric_id=$1',[owned.metric_id]);
     await c.query('DELETE FROM metric_definition_versions WHERE metric_id=$1',[owned.metric_id]);
     await c.query('DELETE FROM metrics WHERE id=$1',[owned.metric_id]);

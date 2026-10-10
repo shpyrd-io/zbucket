@@ -22,7 +22,7 @@ const server=createServer(async(req,res)=>{try{
  }catch{res.writeHead(500,{'Content-Type':'application/json'}).end(JSON.stringify({error:'Acceptance fixture failed'}));}});
 try{
  await admin({action:'collection',key:'sample',name:'SDK sample'});
- const app=await admin({action:'create',name:'Python acceptance',permissions:{...emptyPermissions,metrics:{...emptyPermissions.metrics,manageOwn:true,snapshots:true,export:true},knowledge:{readCollections:['sample'],writeCollections:['sample'],search:true,history:true,archive:true}}});
+ const app=await admin({action:'create',name:'Python acceptance',permissions:{...emptyPermissions,metrics:{...emptyPermissions.metrics,manageOwn:true,snapshots:true},knowledge:{readCollections:['sample'],writeCollections:['sample'],search:true,history:true,archive:true}}});
  const credential=await admin({action:'issue',id:app.id,days:1});
  await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));const address=server.address();if(!address||typeof address==='string')throw new Error('Missing test port');
  const status=await new Promise<number|null>((resolve,reject)=>{

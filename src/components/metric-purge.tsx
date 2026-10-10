@@ -62,7 +62,7 @@ export function MetricPurge({metric,startsAt,endsAt,dimensions}:{metric:Metric;s
     </form>:<form className="grid gap-4" onSubmit={e=>{e.preventDefault();void run(true);}}>
       <div className="rounded-md bg-muted p-3 text-sm grid gap-2"><p>{preview.scope.startsAt?`${preview.scope.startsAt} → ${preview.scope.endsAt} (end exclusive)`:'All time'}</p><p>{Object.entries(preview.scope.dimensions).map(([k,v])=>`${k} = ${v}`).join(' · ')||'All dimension values'}</p></div>
       <dl className="grid grid-cols-[1fr_auto] gap-2 text-sm">{(['measurements','aggregateBuckets','dimensionCombinations'] as const).map(key=><div key={key} className="contents"><dt className="text-muted-foreground">{labels[key]}</dt><dd className="tabular-nums font-medium">{preview.counts[key].toLocaleString()}</dd></div>)}</dl>
-      <p className="text-sm">This cannot be undone. Saved snapshots and existing export files keep their historical values.</p>
+      <p className="text-sm">This cannot be undone. Saved snapshots keep their historical values.</p>
       <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">Processing and history details</summary><div className="mt-2 grid gap-2">
         <p>{preview.counts.records.toLocaleString()} record identities · {preview.counts.pendingRecords.toLocaleString()} pending revisions · {preview.counts.coverageIntervals.toLocaleString()} coverage intervals affected.</p>
         <p>Other metrics and this metric's definition are preserved. Purged record identities remain reserved for retry safety; use new record IDs to republish intentionally. Shared source events may retain their original payload for other metrics.</p>

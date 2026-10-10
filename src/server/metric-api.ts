@@ -10,8 +10,6 @@ import {queryMetric} from './metrics/query';
 import {metricData,sourceHealth,goalResult} from './metrics/exploration';
 import {metricDistribution} from './metrics/distribution';
 import {libraryList,librarySave,libraryRun,libraryDelete} from './metrics/library';
-import {createExport,exportStatus,exportFile} from './metrics/exports';
-import {Readable} from 'node:stream';
 export async function allowedMetric(pool:Pick<pg.Pool,'query'>,p:Principal,id:string,mode:'read'|'write'='read'){
  if(p.kind==='integration'){const r=await pool.query('SELECT id FROM metrics WHERE key=ANY($1::text[]) AND (key=$2 OR id::text=$2)',[p.permissions.metrics[mode],id]);check(r.rowCount,'Metric not found.',404);}
  return getMetric(pool,id);
@@ -23,7 +21,8 @@ export async function safeQuery(pool:pg.Pool,p:Principal,input:unknown){const b=
  const result=await queryMetric(pool,q);
  if(b.snapshot&&p.kind==='integration'){const id=uuid();await pool.query('INSERT INTO warehouse_snapshots(id,app_id,metric_key,query,result) VALUES($1,$2,$3,$4,$5)',[id,p.id,m.key,q,result]);return {...result,snapshotId:id};}return result;
 }
-export async function metricGet(pool:pg.Pool,p:Principal,parts:string[],params:URLSearchParams){const[op,id,sub]=parts;
+export async function metricGet(pool:pg.Pool,p:Principal,parts:string[],params:URLSearchParams){const[op,id]=parts;
+ check(!['exports','export-query'].includes(op),'Metrics endpoint not found.',404);
  if(op==='catalog'){
   if(p.kind==='user')return catalog(pool,params.get('q')??'',params.get('after')??'');
   const rows=(await pool.query(`SELECT m.*,v.config || v.reporting_policy config,v.reporting_revision FROM metrics m JOIN metric_definition_versions v ON v.metric_id=m.id AND v.version=m.version WHERE m.key=ANY($1::text[]) AND (v.config->>'name' ILIKE $2 OR m.key ILIKE $2) AND m.key>$3 ORDER BY m.key LIMIT 51`,[p.permissions.metrics.read,'%'+(params.get('q')??'').slice(0,200)+'%',params.get('after')??''])).rows;
@@ -42,15 +41,11 @@ export async function metricGet(pool:pg.Pool,p:Principal,parts:string[],params:U
  if(op==='sources')return sourceHealth(pool);
  if(op==='goals')return goalResult(pool,id);
  if(op==='snapshots'){const r=(await pool.query('SELECT * FROM metric_query_snapshots WHERE id=$1',[id])).rows[0];check(r,'Snapshot not found.',404);return r;}
- if(op==='exports'){if(sub==='download'){const f=await exportFile(pool,id);return new Response(Readable.toWeb(f.stream) as ReadableStream,{headers:{'Content-Type':'application/x-ndjson','Content-Disposition':`attachment; filename="warehouse-${id}.ndjson"`,'Cache-Control':'no-store'}});}return exportStatus(pool,id);}
  check(false,'Metrics endpoint not found.',404);
 }
 export async function metricPost(pool:pg.Pool,p:Principal,parts:string[],input:unknown,req:Request){const[op,id]=parts,b=object(input);
- if(op==='query'||op==='export-query'){
-  if(op==='export-query'&&p.kind==='integration')check(p.permissions.metrics.export,'Export permission required.',403);
-  const r=await safeQuery(pool,p,b);if(op==='query')return r;
-  return new Response(JSON.stringify(r),{headers:{'Content-Type':'application/json','Content-Disposition':'attachment; filename="warehouse-query.json"','Cache-Control':'no-store'}});
- }
+ check(!['exports','export-query'].includes(op),'Metrics endpoint not found.',404);
+ if(op==='query')return safeQuery(pool,p,b);
  if(['measurements','events','aggregates','corrections','coverage'].includes(op)){
   check(p.kind==='integration','Use an integration credential for ingestion.',403);
   if(op==='coverage'){const m=await allowedMetric(pool,p,text(b.metricKey,'Metric'),'write');scopedDimensions(p.permissions,m.key,b.dimensions,'write');return coverage(pool,p.sourceId,b);}
@@ -63,7 +58,6 @@ export async function metricPost(pool:pg.Pool,p:Principal,parts:string[],input:u
  if(op==='distribution')return metricDistribution(pool,b as unknown as MetricQuery);
  if(op==='library-run')return libraryRun(pool,p.id,text(b.id,'Saved item'));
  if(op==='library')return b.action==='delete'?libraryDelete(pool,p.id,id,Number(b.revision)):librarySave(pool,p.id,b,id);
- if(op==='exports')return createExport(pool,b,p.id);
  admin(u);
  if(op==='purge-preview')return previewPurge(pool,u,id,b);
  if(op==='purge')return purgeMetric(pool,u,id,b);

@@ -52,7 +52,7 @@ An administrator opens **Integrations → New integration**:
 1. Set the application's name.
 2. Grant explicit metric keys for **read** and **publish**. These are separate lists. Keys can be granted before a metric exists. Empty lists grant nothing; wildcards are unsupported.
 3. Grant Knowledge collection keys for **read** and **publish**. Create each collection first. A collection is the document authorization boundary; category, tags and source type are descriptive metadata.
-4. Enable optional capabilities: Knowledge search, history and archive; metric snapshots and exports. Enable **Create and manage own metrics** only for applications allowed to auto-publish their metric definitions. This is `metrics.manageOwn`; it defaults to `false`, including for existing integrations.
+4. Enable optional capabilities: Knowledge search, history and archive; metric snapshots. Enable **Create and manage own metrics** only for applications allowed to auto-publish their metric definitions. This is `metrics.manageOwn`; it defaults to `false`, including for existing integrations.
 5. If necessary, restrict a metric to exact dimension values, such as `account_id: "account-001"`. Reads automatically include that scope; writes must explicitly match it. Multiple fields use AND.
 6. Save and select **Issue credential**. The full `wh_…` secret is displayed once. Store it immediately. The UI issues a 90-day token; administrative issuance supports 1–365 days.
 
@@ -67,8 +67,7 @@ A representative permission object is:
     "write": ["cash_balance_brl"],
     "dimensions": {"cash_balance_brl": {"account_id": "account-001"}},
     "manageOwn": false,
-    "snapshots": true,
-    "export": false
+    "snapshots": true
   },
   "knowledge": {
     "readCollections": ["finance"],
@@ -80,7 +79,7 @@ A representative permission object is:
 }
 ```
 
-This object describes settings, not a body to submit to metric ingestion. Administrative integration changes require a human administrator session. Application tokens cannot create integrations, change arbitrary permissions or provision users. With `metrics.manageOwn: true`, they can register their own metrics, edit metadata and delete unused metrics through the definition API. Creation atomically grants read and publish access to that key; it does not grant snapshots, exports or any other application's metrics. See the Metrics API guide for POST/PATCH/DELETE contracts.
+This object describes settings, not a body to submit to metric ingestion. Administrative integration changes require a human administrator session. Application tokens cannot create integrations, change arbitrary permissions or provision users. With `metrics.manageOwn: true`, they can register their own metrics, edit metadata and delete unused metrics through the definition API. Creation atomically grants read and publish access to that key; it does not grant snapshots or any other application's metrics. See the Metrics API guide for POST/PATCH/DELETE contracts.
 
 ### Auto-publish on application startup
 

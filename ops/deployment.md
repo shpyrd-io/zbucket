@@ -15,9 +15,9 @@ The project is **Warehouse**, slug `warehouse`, at `https://platform-warehouse.s
 
 ## Runtime and storage
 
-`shpyrd.yaml` defines a `shared-l` web process and a `shared-m` worker. The web process reads the injected `PORT`. The worker handles metric ingestion, retention, NDJSON exports and Voyage indexing. The release phase migrates the database and imports this repository's documentation before rollout. Synthetic metrics and local users are not deployed or seeded.
+`shpyrd.yaml` defines a `shared-l` web process and a `shared-m` worker. The web process reads the injected `PORT`. The worker handles metric ingestion, retention and Voyage indexing. The release phase migrates the database and imports this repository's documentation before rollout. Synthetic metrics and local users are not deployed or seeded.
 
-PostgreSQL 17 has pgvector, its own 5 GiB disk, a `shared-l` instance and daily backups with continuous WAL archiving retained for seven days. It is attached as `DATABASE_URL`. A separate 5 GiB shared volume named `exports` is mounted at `/data/exports` in both processes, so files produced by the worker can be downloaded by the web process and survive releases. Monitor disk use; the volume size bounds available export capacity. Database backups do not include export files.
+PostgreSQL 17 has pgvector, its own 5 GiB disk, a `shared-l` instance and daily backups with continuous WAL archiving retained for seven days. It is attached as `DATABASE_URL`. Web and worker have no persistent filesystem volumes. Metric data, saved evidence and documents are stored in PostgreSQL; API clients retrieve data through JSON queries. There is no file export queue or server-side download storage.
 
 The checked-in `.npmrc` uses `install-links=true` so the bundled, unmodified design system installs as the local package recorded in `package-lock.json`. Run `npm ci` for a reproducible clean installation.
 

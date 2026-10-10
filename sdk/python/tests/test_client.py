@@ -212,7 +212,7 @@ class ClientTests(unittest.TestCase):
         self.client.metrics.coverage({"metricKey": "a"})
         self.assertTrue(self.server.requests[-1][1].endswith("/coverage"))
         self.reply({"value": "123456789012345678.90", "series": []})
-        self.assertEqual(self.client.metrics.export_query({"metricId": "a"})["value"], "123456789012345678.90")
+        self.assertEqual(self.client.metrics.query({"metricId": "a"})["value"], "123456789012345678.90")
         self.reply({"id": "snap", "result": {}})
         self.client.metrics.snapshot("snap")
         self.assertTrue(self.server.requests[-1][1].endswith("/snapshots/snap"))

@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-09T23:12:57.592Z",
+  "at": "2026-10-10T17:47:58.094Z",
   "passed": 13,
   "checks": [
     "Explicit opt-in, publisher identity and atomic read/write grants; stale administrator edits cannot erase grants.",

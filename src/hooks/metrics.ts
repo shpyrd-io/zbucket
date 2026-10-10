@@ -11,7 +11,6 @@ export function useMetricData(id:string,after='',version?:number){return useQuer
 export function useMetricSources(){return useQuery({queryKey:['metric-sources'],queryFn:metricsApi.sources,...manualMetricRefresh});}
 export function useMetricGoal(id:string){return useQuery({queryKey:['metric-goal',id],queryFn:()=>metricsApi.goal(id),...manualMetricRefresh});}
 
-export function useMetricExport(id:string){return useQuery({queryKey:['metric-export',id],queryFn:()=>metricsApi.exportStatus(id),enabled:!!id,refetchInterval:q=>['completed','failed'].includes(q.state.data?.status??'')?false:2000});}
 
 export function useRefreshMetrics(){
  const qc=useQueryClient();
