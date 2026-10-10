@@ -21,3 +21,9 @@ playwright-report/
 test-results/
 __pycache__/
 *.pyc
+
+# Python SDK builds and environments
+.venv/
+*.egg-info/
+sdk/python/build/
+sdk/python/dist/
