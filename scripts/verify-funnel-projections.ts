@@ -8,7 +8,7 @@ const {GET,POST}=await import('../app/api/v1/[...operation]/route');const {datab
 const {processFunnelProjection,reconcileFunnelSubscriptions,cleanFunnelProjections,setFunnelPreprocessing}=await import('../src/server/metrics/funnel-projections');const {prewarmFunnels}=await import('../src/server/metrics/funnel-prewarming');
 let pool:pg.Pool|undefined;const checks:string[]=[],report:Record<string,any>={at:new Date().toISOString(),scope:'Isolated local PostgreSQL; real API ingestion for correctness and incremental updates, synthetic published index fixture for load. No production capacity claim.'};
 async function call(path:string,body?:unknown,token?:string,status=200){const r=await(body?POST:GET)(new Request('http://localhost/api/v1/'+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined}),{params:Promise.resolve({operation:path.split('/')})});const value=await r.json();assert.equal(r.status,status,`${path}: ${JSON.stringify(value)}`);return value;}
-async function drain(){for(let i=0;i<100;i++){const worked=await processFunnelProjection(pool!);if(!worked)break;if(i===99)throw new Error('Projection did not drain');}const failed=(await pool!.query('SELECT error FROM metric_funnel_definitions WHERE error IS NOT NULL')).rows;assert.deepEqual(failed,[]);await pool!.query("UPDATE metric_funnel_runs SET available_at=now() WHERE status='queued'");while(await processFunnelRun(pool!)){} }
+async function drain(){for(let i=0;i<10000;i++){const worked=await processFunnelProjection(pool!);if(!worked)break;if(i&&i%20===0)console.log('Preprocessing batches:',i);if(i===9999)throw new Error('Projection did not drain');}const failed=(await pool!.query('SELECT error FROM metric_funnel_definitions WHERE error IS NOT NULL')).rows;assert.deepEqual(failed,[]);await pool!.query("UPDATE metric_funnel_runs SET available_at=now() WHERE status='queued'");while(await processFunnelRun(pool!)){} }
 const counts=(r:any)=>r.steps.map((s:any)=>s.count);
 try{
  await call('session');pool=await database();
@@ -84,8 +84,35 @@ try{
  await call('metrics/event-funnel-runs',{...q,startsAt:new Date(Date.now()-40*86400000).toISOString()},token,422);
  checks.push('Three-attempt failure limit, explicit retry, operational disable/enable rebuild and retained-history cleanup');
  await reconcileFunnelSubscriptions(pool);
+ // Initial batches commit checkpoints but never expose a partial report.
+ const rq={...q,windowSeconds:86407,steps:[{name:'resume-open'},{name:'resume-export'}]};
+ const resumeAnon='anon:22222222-2222-4222-8222-222222222222';
+ await ingest([event('resume-a','resume-open',5,'!resume-a'),event('resume-anon','resume-open',5,resumeAnon),event('resume-linked','resume-export',5.1,'user:zzresume')]);
+ const resumeSaved=await save(rq,'Resumable acceptance'),resumeRun=await call('metrics/event-funnel-runs',rq);
+ const resumeDef=(await pool.query('SELECT definition_id id FROM metric_funnel_subscriptions WHERE library_id=$1',[resumeSaved.id])).rows[0].id;
+ await processFunnelProjection(pool,{backfillBatch:1});
+ const checkpoint=(await pool.query('SELECT backfill_cursor,processed_events FROM metric_funnel_definitions WHERE id=$1',[resumeDef])).rows[0];
+ assert.equal(checkpoint.backfill_cursor,'!resume-a');
+ assert.equal((await call('metrics/event-funnel-runs/'+resumeRun.runId,{})).steps.length,0);
+ await assert.rejects(()=>processFunnelProjection(pool!,{backfillBatch:1,failBeforeCommit:true}));
+ assert.deepEqual((await pool.query('SELECT backfill_cursor,processed_events FROM metric_funnel_definitions WHERE id=$1',[resumeDef])).rows[0],checkpoint);
+ await pool.query('UPDATE metric_funnel_definitions SET available_at=now() WHERE id=$1',[resumeDef]);
+ await ingest([event('resume-a-export','resume-export',5.1,'!resume-a'),event('resume-behind-open','resume-open',5,'!0:behind'),event('resume-behind-export','resume-export',5.1,'!0:behind')]);
+ await call('metrics/event-identify',{datasetKey:'app',schemaVersion:1,anonymousId:resumeAnon,userId:'user:zzresume'},token);
+ await drain();assert.deepEqual(counts(await call('metrics/event-funnel-runs/'+resumeRun.runId,{})),[3,3]);
+ await setFunnelPreprocessing(pool,false);
+ for(const recordId of ['resume-behind-open','resume-behind-export'])await call('metrics/corrections',{mode:'events',recordId,revision:2,tombstone:true,reason:'Rebuild generation acceptance'},token,202);
+ while(await processMetricBatch(pool)){}await setFunnelPreprocessing(pool,true);await drain();
+ const rebuilt=await call('metrics/event-funnel-runs',rq);await drain();assert.deepEqual(counts(await call('metrics/event-funnel-runs/'+rebuilt.runId,{})),[2,2]);
+ checks.push('Backfill resumes after rollback; writes behind its checkpoint and aliases spanning batches converge; rebuild generations exclude removed actors');
+ // The same event name can have filtered and unfiltered steps, without a UNION duplicate.
+ await ingest([event('mixed-a','mixed',7,'mixed:a'),event('mixed-b1','mixed',7,'mixed:b',false),event('mixed-b2','mixed',7.1,'mixed:b',true)]);
+ const mq={...q,steps:[{name:'mixed',properties:{paid:true}},{name:'mixed'}]};
+ const mixed=await call('metrics/event-funnel-runs',mq);await drain();assert.deepEqual(counts(await call('metrics/event-funnel-runs/'+mixed.runId,{})),[2,0]);
+ checks.push('Mixed filtered and unfiltered repeated steps do not reuse a single event occurrence');
  if(process.argv.includes('--load')){
-  const count=Number(process.env.FUNNEL_LOAD_PEOPLE??150000);assert(Number.isInteger(count)&&count>=100&&count<=1000000&&count%4===0);
+  assert(/^[a-z0-9-]{0,40}$/.test(process.env.FUNNEL_LOAD_LABEL??''),'Invalid report label');
+  const count=Number(process.env.FUNNEL_LOAD_PEOPLE??150000);assert(Number.isInteger(count)&&count>=400&&count<=1000000&&count%4===0);
   console.log('Building isolated load fixture for',count,'participants');const fixtureStart=performance.now();
   const c=await pool.connect();try{
    await c.query("BEGIN; SET LOCAL statement_timeout='180s'");
@@ -113,6 +140,16 @@ try{
   };
   console.log('Measuring direct engine');load.baseline=await baselineRun(lq);
   load.warmBaseline=await baselineRun({...lq,windowSeconds:lq.windowSeconds+1});
+  load.rawCachedReadMs=[];for(let i=0;i<10;i++){const t=performance.now();await call('metrics/event-funnel-runs',lq);load.rawCachedReadMs.push(performance.now()-t);}
+  load.rawSnapshotStorageBytes=(await pool.query("SELECT pg_total_relation_size('metric_funnel_member_blocks')::text bytes")).rows[0].bytes;
+  const candidate=(await import('../src/server/metrics/funnel-candidates')).funnelCandidateSql({...lq,unit:'person'},{properties:'properties'});
+  const explain=await pool.connect();try{
+   await explain.query("BEGIN; SET LOCAL statement_timeout='30s'; SET LOCAL work_mem='16MB'; SET LOCAL cursor_tuple_fraction=1; SET LOCAL max_parallel_workers_per_gather=0");
+   load.cursorPlan=(await explain.query('EXPLAIN (FORMAT JSON) DECLARE probe_cursor NO SCROLL CURSOR FOR '+candidate.sql,candidate.args)).rows[0]['QUERY PLAN'];
+   load.sqlProfile=(await explain.query('EXPLAIN (ANALYZE,BUFFERS,TIMING OFF,FORMAT JSON) '+candidate.sql,candidate.args)).rows[0]['QUERY PLAN'];
+   await explain.query('COMMIT');
+  }catch(error){await explain.query('ROLLBACK');load.profileError=String(error);}finally{explain.release();}
+  load.memberBlocks=(await pool.query("SELECT count(*)::int n FROM metric_funnel_member_blocks b JOIN metric_funnel_runs r ON r.id=b.run_id WHERE r.query->>'datasetKey'='load'")).rows[0].n;
   const loadSaved=await save(lq,'Load saved funnel');console.log('Backfilling saved funnel');let start=performance.now();
   try{await drain();}catch(error){
    const failed=(await pool.query('SELECT initialized,processed_events,attempts,error,stats FROM metric_funnel_definitions d JOIN metric_funnel_subscriptions s ON s.definition_id=d.id WHERE s.library_id=$1',[loadSaved.id])).rows[0];
@@ -142,4 +179,4 @@ try{
  }
  report.checks=checks;report.completed=true;
 }catch(e){report.checks=checks;report.error=e instanceof Error?e.message:String(e);throw e;}
-finally{await pool?.end();await root.query(`DROP SCHEMA ${schema} CASCADE`);await root.end();report.cleanedUp=true;await writeFile(process.argv.includes('--load')?`experiments/metrics/funnel-projections-load${process.env.FUNNEL_LOAD_PEOPLE?'-'+process.env.FUNNEL_LOAD_PEOPLE:''}.json`:'experiments/metrics/funnel-projections-acceptance.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report,null,2));}
+finally{await pool?.end();if(report.error&&process.env.FUNNEL_LOAD_KEEP_ON_FAILURE==='1'){report.retainedSchema=schema;report.cleanedUp=false;}else{await root.query(`DROP SCHEMA ${schema} CASCADE`);report.cleanedUp=true;}await root.end();await writeFile(process.argv.includes('--load')?`experiments/metrics/funnel-projections-load${process.env.FUNNEL_LOAD_PEOPLE?'-'+process.env.FUNNEL_LOAD_PEOPLE:''}${process.env.FUNNEL_LOAD_LABEL?'-'+process.env.FUNNEL_LOAD_LABEL:''}.json`:'experiments/metrics/funnel-projections-acceptance.json',JSON.stringify(report,null,2)+'\n');const summary=structuredClone(report);if(summary.load){delete summary.load.cursorPlan;delete summary.load.sqlProfile;}console.log(JSON.stringify(summary,null,2));}

@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS metric_funnel_definitions(
  available_at timestamptz NOT NULL DEFAULT now(),created_at timestamptz NOT NULL DEFAULT now(),stats jsonb,
  FOREIGN KEY(source_id,dataset_key,schema_version) REFERENCES metric_event_datasets(source_id,dataset_key,schema_version));
 ALTER TABLE metric_funnel_definitions ADD COLUMN IF NOT EXISTS processed_events bigint NOT NULL DEFAULT 0;
+ALTER TABLE metric_funnel_definitions ADD COLUMN IF NOT EXISTS backfill_cursor text;
+ALTER TABLE metric_funnel_definitions ADD COLUMN IF NOT EXISTS backfill_started_at timestamptz;
+ALTER TABLE metric_funnel_definitions ADD COLUMN IF NOT EXISTS build_generation bigint NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS metric_funnel_def_dataset ON metric_funnel_definitions(source_id,dataset_key,schema_version);
 CREATE TABLE IF NOT EXISTS metric_funnel_subscriptions(
  library_id uuid PRIMARY KEY REFERENCES metric_library ON DELETE CASCADE,
@@ -24,6 +27,7 @@ CREATE TABLE IF NOT EXISTS metric_funnel_occurrences(
  definition_id uuid NOT NULL REFERENCES metric_funnel_definitions ON DELETE CASCADE,
  actor text COLLATE "C" NOT NULL,stage smallint NOT NULL,started_at timestamptz NOT NULL,reached_at timestamptz NOT NULL,
  PRIMARY KEY(definition_id,actor,stage,started_at),CHECK(reached_at>=started_at));
+ALTER TABLE metric_funnel_occurrences ADD COLUMN IF NOT EXISTS build_generation bigint NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS metric_funnel_occurrence_period ON metric_funnel_occurrences(definition_id,started_at,reached_at) INCLUDE(actor,stage);
 ALTER TABLE metric_funnel_runs ADD COLUMN IF NOT EXISTS projection_id uuid;
 ALTER TABLE metric_funnel_runs ADD COLUMN IF NOT EXISTS projection_revision bigint;

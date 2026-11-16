@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-16T16:53:28.984Z",
+  "at": "2026-11-16T22:50:40.560Z",
   "scope": "Isolated local PostgreSQL. Functional API acceptance plus synthetic published index load; no production network or concurrent ingestion benchmark.",
   "checks": [
     "Exact cross-day sequence, repeated starts, inclusive window, typed filters, batch boundaries, durable queue and concurrent deduplication",
@@ -8,9 +8,11 @@
     "Corrections invalidate cached participants immediately; cached reads recheck current grants",
     "Library reports queue and expose independent comparison-period counts",
     "Identity linking invalidates cached cohorts; concurrent deletion preserves snapshot consistency and blocks old results; cleanup removes invalid participants",
-    "Total budget errors stop after three attempts; explicit retry and expired-lease recovery complete safely"
+    "Total budget errors stop after three attempts; explicit retry and expired-lease recovery complete safely",
+    "Compact snapshots preserve cross-block pagination, sparse stage filtering, drop-offs and Unicode identity ordering",
+    "Previously completed row-based snapshots remain readable with exact stage filtering and pagination"
   ],
-  "passed": 7,
+  "passed": 9,
   "completed": true,
   "cleanedUp": true
 }

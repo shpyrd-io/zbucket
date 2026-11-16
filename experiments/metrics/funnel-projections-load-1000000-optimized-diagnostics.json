@@ -1,0 +1,39 @@
+{
+  "at": "2026-11-16T22:40:49.565Z",
+  "scope": "Environment sampled during optimized fixture creation; shared local host, no production capacity claim.",
+  "environment": {
+    "cpu": "Apple M2",
+    "logicalCpus": 8,
+    "ramGiB": 24,
+    "node": "v24.16.0",
+    "postgres": "18.3 (Homebrew)",
+    "shared_buffers": "128MB",
+    "workerWorkMemMiB": 16,
+    "workerStatementTimeoutMs": 30000,
+    "workerExecutionBudgetMs": 120000
+  },
+  "hostLoadSamples": [
+    {
+      "at": "2026-11-16T22:40:49.566Z",
+      "averages": [
+        6.83984375,
+        7.25732421875,
+        6.5439453125
+      ]
+    },
+    {
+      "at": "2026-11-16T22:45:34.579Z",
+      "phase": "backfill",
+      "averages": [
+        8.9619140625,
+        7.55419921875,
+        6.79638671875
+      ]
+    }
+  ],
+  "limits": [
+    "Synthetic published-index fixture, not API ingestion throughput.",
+    "SQL profiling runs after direct timings and before preprocessing, warming the database.",
+    "Previous and current runs share hardware but have uncontrolled concurrent host workloads."
+  ]
+}

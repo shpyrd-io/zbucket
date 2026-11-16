@@ -54,13 +54,33 @@ try{
  const cq={...aq,windowSeconds:86401};const concurrent=await call('metrics/event-funnel-runs',cq);let changed=false;
  await processFunnelRun(pool,{batchSize:1,afterBatch:async()=>{if(changed)return;changed=true;await pool!.query("DELETE FROM metric_event_index WHERE source_id=$1 AND record_id='alias-export'",[sourceId]);}});
  assert.deepEqual((await pool.query('SELECT counts FROM metric_funnel_runs WHERE id=$1',[concurrent.runId])).rows[0].counts,[1,1]);assert.equal((await call('metrics/event-funnel-runs/'+concurrent.runId,{})).status,'invalidated');
- await cleanFunnelRuns(pool);assert.equal((await pool.query('SELECT count(*)::int n FROM metric_funnel_members WHERE run_id=$1',[concurrent.runId])).rows[0].n,0);
+ await cleanFunnelRuns(pool);assert.equal((await pool.query('SELECT count(*)::int n FROM metric_funnel_members WHERE run_id=$1',[concurrent.runId])).rows[0].n,0);assert.equal((await pool.query('SELECT count(*)::int n FROM metric_funnel_member_blocks WHERE run_id=$1',[concurrent.runId])).rows[0].n,0);
  checks.push('Identity linking invalidates cached cohorts; concurrent deletion preserves snapshot consistency and blocks old results; cleanup removes invalid participants');
  const budget=await call('metrics/event-funnel-runs',{...aq,windowSeconds:86402});
  for(let i=0;i<3;i++){await processFunnelRun(pool,{deadlineMs:0});await pool.query('UPDATE metric_funnel_runs SET available_at=now() WHERE id=$1',[budget.runId]);}
  const exhausted=await call('metrics/event-funnel-runs/'+budget.runId,{});assert.equal(exhausted.status,'failed');assert.deepEqual(exhausted.steps,[]);assert.match(exhausted.error,/budget/);
  const recovery=await call('metrics/event-funnel-runs/'+budget.runId,{action:'retry'});await pool.query("UPDATE metric_funnel_runs SET status='running',lease_until=now()-interval '1 minute',lease_token=gen_random_uuid() WHERE id=$1",[recovery.runId]);await processFunnelRun(pool);assert.equal((await call('metrics/event-funnel-runs/'+recovery.runId,{})).status,'completed');
  checks.push('Total budget errors stop after three attempts; explicit retry and expired-lease recovery complete safely');
+ // Pagination crosses compressed-block boundaries and preserves PostgreSQL C ordering.
+ const pageActors=[...Array.from({length:5000},(_,i)=>'page:'+String(i).padStart(5,'0')),'page:\uE000','page:😀'].sort((a,b)=>Buffer.compare(Buffer.from(a),Buffer.from(b)));
+ const pageEvents=pageActors.flatMap((person,i)=>[{eventId:'po'+i,occurredAt:at(7),data:{name:'page-open',person,account:'pages',properties:{}}},...(i%257===0?[{eventId:'pe'+i,occurredAt:at(7.01),data:{name:'page-export',person,account:'pages',properties:{}}}]:[])]);
+ for(let i=0;i<pageEvents.length;i+=1000){await call('metrics/events',{datasetKey:'app',schemaVersion:1,events:pageEvents.slice(i,i+1000)},token,202);while(await processMetricBatch(pool)){} }
+ const pq={...q,steps:[{name:'page-open'},{name:'page-export'}]},pageRun=await call('metrics/event-funnel-runs',pq);await processFunnelRun(pool);
+ const pageRead=async(body:unknown)=>call('metrics/event-funnel-runs/'+pageRun.runId,body);
+ assert.deepEqual((await pageRead({})).steps.map((s:any)=>s.count),[pageActors.length,20]);
+ assert.equal((await pool.query('SELECT count(*)::int n FROM metric_funnel_member_blocks WHERE run_id=$1',[pageRun.runId])).rows[0].n,2);
+ assert.equal((await pool.query('SELECT count(*)::int n FROM metric_funnel_members WHERE run_id=$1',[pageRun.runId])).rows[0].n,0);
+ for(const start of [4070,4095,4990])assert.deepEqual((await pageRead({after:pageActors[start]})).participants.map((m:any)=>m.id),pageActors.slice(start+1,start+51));
+ assert.deepEqual((await pageRead({stage:2})).participants.map((m:any)=>m.id),pageActors.filter((_,i)=>i%257===0));
+ assert.deepEqual((await pageRead({stage:1,outcome:'dropped',after:pageActors[4090]})).participants.map((m:any)=>m.id),pageActors.filter((_,i)=>i>4090&&i%257!==0).slice(0,50));
+ checks.push('Compact snapshots preserve cross-block pagination, sparse stage filtering, drop-offs and Unicode identity ordering');
+ // Simulate a completed snapshot created before the compact storage migration.
+ await pool.query('INSERT INTO metric_funnel_members(run_id,attempt,actor,reached) SELECT run_id,attempt,unnest(actors),unnest(reached) FROM metric_funnel_member_blocks WHERE run_id=$1',[pageRun.runId]);
+ await pool.query("UPDATE metric_funnel_runs SET metadata=metadata-'memberFormat' WHERE id=$1",[pageRun.runId]);
+ await pool.query('DELETE FROM metric_funnel_member_blocks WHERE run_id=$1',[pageRun.runId]);
+ assert.deepEqual((await pageRead({stage:2})).participants.map((m:any)=>m.id),pageActors.filter((_,i)=>i%257===0));
+ assert.deepEqual((await pageRead({after:pageActors[4070]})).participants.map((m:any)=>m.id),pageActors.slice(4071,4121));
+ checks.push('Previously completed row-based snapshots remain readable with exact stage filtering and pagination');
  if(process.argv.includes('--load')){
   const loadStart=performance.now(),count=Number(process.env.FUNNEL_LOAD_PEOPLE??150000);assert(Number.isInteger(count)&&count>=100&&count<=1000000);
   const c=await pool.connect();try{

@@ -828,11 +828,18 @@ Run `npm run worker:funnels` alongside the ingestion worker in deployed environm
 
 Read/paginate a fixed result with `POST /api/v1/metrics/event-funnel-runs/:id` and `{stage, outcome, after}`, or GET that path with the equivalent query parameters. Current dataset grants and event retention are checked on every read. `outcome` is `reached` or `dropped`; cursors page identities in deterministic byte order. Participant pagination never recalculates the sequence. A run is not a new authorization boundary: sharing a run ID does not grant event access.
 
-POST `{action:"cancel"}` to the run path to cancel a run you requested. POST `{action:"retry"}` to retry a failed/cancelled run; the dataset read grant is required. Worker failures retry up to three times with backoff. Expired leases can be recovered; attempt tokens prevent stale workers from publishing. Partial participants are never visible. A retry restarts the calculation from a new consistent snapshot rather than resuming a cursor against changed data.
+POST `{action:"cancel"}` to the run path to cancel a run you requested. POST `{action:"retry"}` to retry a failed/cancelled run; the dataset read grant is required. Worker failures retry up to three times with backoff. Expired leases can be recovered; attempt tokens prevent stale workers from publishing. Partial participants are never visible. A raw-event run retries from a new consistent snapshot rather than resuming a cursor against changed data. Saved-definition backfills use the durable actor checkpoints described below.
 
 Unsaved definitions use a repeatable-read snapshot through a PostgreSQL cursor, ordered by resolved person/account, occurrence time, and event ID with C collation. Equal timestamps have a deterministic event-ID order, not a guarantee of real-world causal order. The streaming evaluator keeps one participant's sequence state and a bounded batch in memory. Other events may occur between funnel steps; a single occurrence cannot satisfy two repeated steps. Repeated entry attempts can convert within the window; a participant counts once per report. All steps must fall within the selected `[startsAt, endsAt)` period. Accounts use event-time membership, never retroactive person-to-account assignment.
 
-The worker fetches 5,000 candidates per batch, uses a 30-second SQL statement timeout, and checks a 120-second total deadline between batches. An in-flight statement may extend that deadline by up to its statement timeout. There is no fixed candidate-count cap in this path. Resource-budget failures are explicit errors, not partial results. Property filters are parameterized, typed JSON comparisons; requests without property filters avoid the original-payload join.
+The worker fetches 5,000 candidates per batch, uses a 30-second SQL statement timeout, and checks a 120-second total deadline between batches. An in-flight statement may extend that deadline by up to its statement timeout. There is no fixed candidate-count cap in this path. Resource-budget failures are explicit errors, not partial results. Property filters are parameterized, typed JSON comparisons. Disjoint event-name branches restrict the original-payload join to names with property-filtered steps; repeated names with mixed predicates remain in one branch. The planner still decides how to access those tables. The cursor sets `cursor_tuple_fraction=1` locally because the worker consumes the complete result ([PostgreSQL documentation](https://www.postgresql.org/docs/current/runtime-config-query.html)).
+
+New raw-engine results store immutable participant snapshots in blocks of up to
+4,096 actors, with reached-stage values and per-stage histograms. An indexed
+block key and the histograms support exact keyset pagination and sparse-stage
+drilldown without copying one indexed row per participant or sorting all arrays
+at read time. Counts and their participant snapshot become visible together.
+Previously completed results in the row-based format remain readable.
 
 Statement-level generation triggers track index and identity changes transactionally. New events can reuse a completed result for up to five minutes, marked `stale` with its snapshot time. Index deletions/updates and identity changes invalidate older results immediately. Old results can return `invalidated`; request a new run instead of mixing pages. Cache cleanup removes terminal runs after seven days, on invalidation, or when their requested history expires. Metrics-only purges do not delete independent behavioral history. Retained cached counts do not extend event retention.
 
@@ -862,7 +869,23 @@ as index publication, corrections, deletion or identity changes. Irrelevant even
 names do not queue work. The dirty queue coalesces repeated changes with a version
 counter. It contains no separate event payloads and is durable across restarts.
 
-The dedicated funnel worker first backfills the dataset's retained history. It
+The dedicated funnel worker first backfills the dataset's retained history in
+batches of up to 5,000 indexed person/account identities. Identity selection uses
+the existing index and its native collation for both ordering and keyset bounds;
+candidate events are then ordered in deterministic byte order. Each batch loads
+complete retained histories for its resolved actors, including aliases. An actor
+with aliases in multiple batches can be rebuilt more than once, idempotently.
+Occurrences and the last scanned identity commit together, so a failed batch
+retries from its durable checkpoint. Changes behind that checkpoint remain in
+the dirty queue for catch-up. A report waits for the complete scan and the dirty
+queue to drain; partial backfills are never exposed as complete funnels.
+
+Re-enabling preprocessing starts a new build generation. Period counts and
+participant pages only read the current generation, including when an actor was
+deleted while preprocessing was disabled. Old-generation occurrences are
+removed by bounded maintenance.
+
+The worker
 stores `(definition, actor, stage, started_at, reached_at)` occurrences for each
 valid ordered prefix. For a given end, the latest feasible start dominates earlier
 starts; later ends with an unchanged start are redundant. Distinct attempts are
@@ -879,8 +902,10 @@ queued for another pass. A process crash rolls back publication; the session loc
 is released and unacknowledged work survives. Failures back off and stop after
 three attempts; retrying the report also retries its failed preprocessing.
 
-Backfills and incremental batches use the same 120-second checked processing
-budget and 30-second statement limit as the existing engine. Progress for initial
+Each backfill or incremental batch uses the same 120-second checked processing
+budget and 30-second statement limit as the existing engine. The complete initial
+build can span many batches and exceed 120 seconds. A single actor with excessive
+retained history can still exceed a batch's budget. Progress for initial
 scans is exposed in pending report messages. One projection batch per schema runs
 at a time; the normal worker alternates projection work and report work. Ingestion
 never waits for a full projection rebuild to finish its queue acknowledgement.
@@ -893,8 +918,8 @@ projection revision and dirty-queue guard are checked in the same SQL snapshot
 as the participant page. This avoids copying all participants for every period.
 Results based on a dirty or superseded projection return `invalidated`; request a
 new run. The current implementation waits for the dirty queue to drain before
-publishing a new period result. Raw-engine runs retain their existing participant
-storage and five-minute soft cache behavior.
+publishing a new period result. Raw-engine runs use the compact participant
+snapshots described above and retain their five-minute soft cache behavior.
 
 Every minute, maintenance considers up to 20 saved subscriptions in rotation and
 requests their configured current/comparison periods before a dashboard opens.
@@ -915,10 +940,20 @@ npm run funnels:preprocessing -- --enable
 
 Disabling waits for active calculation locks, stops new dirty queue writes and
 routes queries through the original event engine. Re-enabling forces a rebuild
-because events received while disabled were not queued. To roll back the code,
-disable preprocessing first, then revert the implementation commit. The prior
-checkpoint is `a126b54`; the new tables are additive and can remain disabled. No
-original events or metric definitions need to be removed. Run these commands
+because events received while disabled were not queued. The checkpoint before
+preprocessing was `a126b54`; the checkpoint before the compact-snapshot and
+resumable-backfill corrections is `a843b58`. The schema additions can remain in
+place. To restore the latter checkpoint, disable preprocessing, stop workers and
+discard new-format derived result caches before starting the old code:
+
+```sql
+DELETE FROM metric_funnel_runs WHERE metadata->>'memberFormat' = 'blocks-v1';
+```
+
+The old engine can then serve raw queries; re-enable preprocessing only when
+ready for its full history rebuild. This prevents old code from treating compact
+snapshots or partially rebuilt projections as legacy results. No original
+events or metric definitions need to be removed. Run these commands
 against the intended Warehouse database only; a code rollback is not a database
 restore. Deployment to any external environment is a separate operation.
 
@@ -928,6 +963,7 @@ Validation and load measurement:
 npm run test:funnel-projections
 npm run test:funnel-projections -- --load
 FUNNEL_LOAD_PEOPLE=1000000 npm run test:funnel-projections -- --load
+FUNNEL_LOAD_PEOPLE=1000000 FUNNEL_LOAD_LABEL=optimized npm run test:funnel-projections -- --load
 ```
 
 The load fixture defaults to 150,000 actors and 525,000 indexed events. It measures
@@ -938,10 +974,18 @@ Fixture creation is timed separately from analytics and is not an ingestion
 throughput measurement. The script creates and removes an isolated local schema.
 `FUNNEL_LOAD_PEOPLE` can change fixture size; explicit sizes write separate
 `experiments/metrics/funnel-projections-load-<people>.json` reports, preserving
-the default baseline. Fixture loading commits every 100,000 actors; analytics
+the default baseline. `FUNNEL_LOAD_LABEL` adds a report suffix. For diagnosis,
+`FUNNEL_LOAD_KEEP_ON_FAILURE=1` retains a failed load's isolated schema and records
+its name in the report; explicitly drop that test schema after investigation.
+Successful runs always clean up. Fixture loading commits every 100,000 actors; analytics
 worker SQL and execution budgets remain unchanged. If the direct engine fails,
 the harness records its error and still attempts preprocessing before failing
-the overall check. Only sizes actually run constitute validation. Entry-cohort
+the overall check. The harness captures a cursor plan and a serial
+`EXPLAIN (ANALYZE, BUFFERS)` profile after direct timings and before backfill;
+this additional scan can warm the database for preprocessing. It also tests
+checkpoint rollback/resume, changes behind the checkpoint, identity linking,
+generation changes, compact pagination across blocks and sparse stages.
+Only sizes actually run constitute validation. Entry-cohort
 periods, arbitrary unsaved-funnel precomputation and constant-cost updates for actors with unbounded history are not implemented.
 
 Scale check on November 16, 2026: the [one-million-participant report](../experiments/metrics/funnel-projections-load-1000000.json)
@@ -960,8 +1004,50 @@ join, sort and I/O costs inside the initial fetch are not separately measured.
 The shared M2/24 GiB machine was busy; this is not a controlled comparison with
 the previous 150,000-participant run or a production capacity claim.
 
-The next scalability step is a resumable initial backfill with bounded actor
-batches, using indexed actor selection before loading event histories. It needs
-an explicit build generation/checkpoint and dirty-queue catch-up so period
-queries only see a consistent published revision. The current implementation
-still reads full retained history through one cursor for initial preprocessing.
+That baseline predates the compact snapshots, disjoint payload joins and
+resumable initial backfill described above. The optimized measurements are
+recorded separately rather than replacing the original failure report.
+
+The [optimized run](../experiments/metrics/funnel-projections-load-1000000-optimized.json)
+completed all nine acceptance/load groups on the same 1,000,000-person /
+3,500,000-event fixture size:
+
+| Measurement | Original implementation | Optimized implementation |
+| --- | --- | --- |
+| Direct calculation plus first read | 62.81s / 69.97s | 18.19s / 16.77s |
+| Direct participant writes | 31.28s / 37.05s | 1.30s / 1.10s |
+| Initial saved-definition backfill | First fetch timed out | 150.20s, 201 committed batches |
+| New projected periods | Not measured | 1.42–1.85s, including the full period at 1.81s |
+| Cached projected reads, 10 sequential samples | Not measured | 5.97–11.13ms |
+| Incremental processing of 100 affected people | Not measured | 82.75ms, 500 retained events replayed |
+
+All full-period counts remained `1,000,000 → 750,000 → 500,000 → 250,000`;
+three different date ranges matched an independent cohort oracle. After 100
+API-ingested conversions the last stage was exactly 250,100. Ingestion and
+publication of those 100 events took 248ms separately; recalculating the
+invalidated period took another 1.83s after incremental processing. The 83ms
+figure is not an end-to-end dashboard freshness claim. Ten simultaneous cached
+requests completed in 279ms total; this is not a sustained concurrency test.
+
+The two raw snapshots used 490 blocks and approximately 7.08 MiB of total block
+table storage (including small acceptance fixtures). The occurrence projection
+used approximately 693.60 MiB for 3,500,100 occurrences after incremental updates.
+Observed process RSS at the end was 87 MiB, not a measured peak. Fixture creation
+took 572.65s and is excluded from analytics timings. The isolated schema was
+removed after success.
+
+The captured serial SQL profile took 11.52s and still scanned all original
+record rows in the property-filter branch, then sorted 3.5 million candidates
+with approximately 210 MiB of disk-backed sort space. Branch separation reduces
+join output and unnecessary property evaluation, but does not guarantee indexed
+payload access for a full-dataset query. The separate
+[backfill plan](../experiments/metrics/funnel-projections-load-1000000-optimized-backfill-plan.json)
+shows indexed actor and original-record lookups for a 5,000-actor batch. The
+remaining direct-query cost is primarily reading and sorting; the initial
+backfill also pays for durable occurrence writes. A newly saved definition is
+therefore still a background build, while subsequent periods reuse its sequences.
+
+These are local measurements on a shared M2/24 GiB machine with 128 MiB PostgreSQL
+shared buffers. [Environment observations](../experiments/metrics/funnel-projections-load-1000000-optimized-diagnostics.json)
+record the configured limits and host load. The before/after runs were not a
+controlled hardware-load comparison, and do not establish production capacity.

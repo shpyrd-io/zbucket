@@ -1,0 +1,58 @@
+{
+  "at": "2026-11-16T22:50:15.467Z",
+  "scope": "Existing local demo after restarting Next and both workers.",
+  "healthStatus": 200,
+  "dashboard": {
+    "id": "01a1dd8a-a76a-7127-822e-c0ed21eb047f",
+    "panels": [
+      {
+        "name": "Orbit · Conversion",
+        "measurementKind": "event_funnel",
+        "series": [
+          {
+            "name": "app_opened",
+            "total": "10"
+          },
+          {
+            "name": "signup_completed",
+            "total": "7"
+          },
+          {
+            "name": "feature_used",
+            "total": "5"
+          },
+          {
+            "name": "report_exported",
+            "total": "3"
+          }
+        ]
+      },
+      {
+        "name": "Orbit · Daily activity",
+        "measurementKind": "count",
+        "series": [
+          {
+            "name": "name: app_opened",
+            "total": "10"
+          },
+          {
+            "name": "name: feature_used",
+            "total": "5"
+          },
+          {
+            "name": "name: report_exported",
+            "total": "3"
+          },
+          {
+            "name": "name: signup_completed",
+            "total": "7"
+          }
+        ]
+      }
+    ]
+  },
+  "legacyRead": {
+    "status": "No retained legacy result to inspect"
+  },
+  "remainingLoadSchemas": 0
+}

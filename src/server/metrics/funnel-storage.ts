@@ -18,6 +18,11 @@ CREATE TABLE IF NOT EXISTS metric_funnel_members(
  actor text COLLATE "C" NOT NULL,reached smallint NOT NULL,
  PRIMARY KEY(run_id,attempt,actor));
 CREATE INDEX IF NOT EXISTS metric_funnel_stage ON metric_funnel_members(run_id,attempt,reached,actor);
+CREATE TABLE IF NOT EXISTS metric_funnel_member_blocks(
+ run_id uuid NOT NULL REFERENCES metric_funnel_runs ON DELETE CASCADE,attempt uuid NOT NULL,
+ last_actor text COLLATE "C" NOT NULL,actors text[] NOT NULL,reached smallint[] NOT NULL,
+ reached_counts integer[] NOT NULL,dropped_counts integer[] NOT NULL,
+ PRIMARY KEY(run_id,attempt,last_actor),CHECK(cardinality(actors)=cardinality(reached)));
 CREATE OR REPLACE FUNCTION warehouse_event_generation_new() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  INSERT INTO metric_event_generations(source_id,generation,erasure)

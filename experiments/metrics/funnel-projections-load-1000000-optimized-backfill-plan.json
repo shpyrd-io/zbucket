@@ -1,0 +1,161 @@
+{
+  "at": "2026-11-16T22:46:18.910Z",
+  "actorCount": 5000,
+  "plan": {
+    "type": "Sort",
+    "rows": 37,
+    "cost": 539.55,
+    "plans": [
+      {
+        "type": "Result",
+        "rows": 37,
+        "cost": 538.49,
+        "plans": [
+          {
+            "type": "Append",
+            "rows": 37,
+            "cost": 538.12,
+            "plans": [
+              {
+                "type": "Subquery Scan",
+                "rows": 34,
+                "cost": 256.84,
+                "plans": [
+                  {
+                    "type": "Merge Join",
+                    "rows": 34,
+                    "cost": 256.5,
+                    "plans": [
+                      {
+                        "type": "Aggregate",
+                        "rows": 5001,
+                        "cost": 120.71,
+                        "plans": [
+                          {
+                            "type": "Append",
+                            "rows": 5001,
+                            "cost": 58.2,
+                            "plans": [
+                              {
+                                "type": "ProjectSet",
+                                "rows": 5000,
+                                "cost": 25.02,
+                                "plans": [
+                                  {
+                                    "type": "Result",
+                                    "rows": 1,
+                                    "cost": 0.01
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "Index Scan",
+                                "relation": "metric_event_identities",
+                                "index": "metric_event_identity_user",
+                                "rows": 1,
+                                "cost": 8.18
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Index Scan",
+                        "relation": "metric_event_index",
+                        "index": "metric_event_person",
+                        "rows": 34,
+                        "cost": 114.51
+                      },
+                      {
+                        "type": "Index Scan",
+                        "relation": "metric_event_identities",
+                        "index": "metric_event_identities_pkey",
+                        "rows": 1,
+                        "cost": 8.17
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "Subquery Scan",
+                "rows": 3,
+                "cost": 281.09,
+                "plans": [
+                  {
+                    "type": "Merge Join",
+                    "rows": 3,
+                    "cost": 281.06,
+                    "plans": [
+                      {
+                        "type": "Aggregate",
+                        "rows": 5001,
+                        "cost": 120.71,
+                        "plans": [
+                          {
+                            "type": "Append",
+                            "rows": 5001,
+                            "cost": 58.2,
+                            "plans": [
+                              {
+                                "type": "ProjectSet",
+                                "rows": 5000,
+                                "cost": 25.02,
+                                "plans": [
+                                  {
+                                    "type": "Result",
+                                    "rows": 1,
+                                    "cost": 0.01
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "Index Scan",
+                                "relation": "metric_event_identities",
+                                "index": "metric_event_identity_user",
+                                "rows": 1,
+                                "cost": 8.18
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Nested Loop",
+                        "rows": 3,
+                        "cost": 139.6,
+                        "plans": [
+                          {
+                            "type": "Index Scan",
+                            "relation": "metric_event_index",
+                            "index": "metric_event_person",
+                            "rows": 3,
+                            "cost": 113.77
+                          },
+                          {
+                            "type": "Index Scan",
+                            "relation": "metric_record_keys",
+                            "index": "metric_record_keys_pkey",
+                            "rows": 1,
+                            "cost": 8.6
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Index Scan",
+                        "relation": "metric_event_identities",
+                        "index": "metric_event_identities_pkey",
+                        "rows": 1,
+                        "cost": 8.17
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

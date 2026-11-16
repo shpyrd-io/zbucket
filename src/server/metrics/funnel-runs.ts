@@ -1,6 +1,7 @@
 import {funnelCandidateSql,type FunnelQuery} from './funnel-candidates';
 export {funnelCandidateSql,type FunnelQuery} from './funnel-candidates';
 import {projectionFor} from './funnel-projections';
+import {FunnelMemberBlocks,readFunnelMemberBlocks} from './funnel-member-blocks';
 import type pg from 'pg';
 import {createHash} from 'node:crypto';
 import {v7 as uuid} from 'uuid';
@@ -38,13 +39,14 @@ async function response(c:pg.PoolClient,p:Principal,r:Run,b:Record<string,unknow
   const page=(await c.query(`SELECT coalesce(jsonb_agg(m ORDER BY m.id) FILTER(WHERE m.id IS NOT NULL),'[]'::jsonb) members
    FROM metric_funnel_definitions d
    LEFT JOIN LATERAL (SELECT actor AS id,max(stage)::int reached FROM metric_funnel_occurrences
-    WHERE definition_id=d.id AND actor>$4 COLLATE "C" AND started_at>=$5 AND reached_at<$6
+    WHERE definition_id=d.id AND actor>$4 COLLATE "C" AND build_generation=d.build_generation AND started_at>=$5 AND reached_at<$6
     GROUP BY actor HAVING max(stage)${outcome==='reached'?'>=':'='}$3 ORDER BY actor LIMIT 51) m ON true
    WHERE d.id=$1 AND d.revision=$2 AND NOT EXISTS(SELECT 1 FROM metric_funnel_dirty WHERE definition_id=d.id)
    AND NOT EXISTS(SELECT 1 FROM metric_event_generations WHERE source_id=d.source_id AND erasure<>$7)
    GROUP BY d.id`,[r.projection_id,r.projection_revision,stage,after,r.query.startsAt,r.query.endsAt,r.erasure])).rows[0];
   if(page)rows=page.members;else ready=false;
- }else if(ready)rows=(await c.query(`SELECT actor AS id,reached FROM metric_funnel_members WHERE run_id=$1 AND attempt=$2 AND reached${outcome==='reached'?'>=':'='}$3 AND actor>$4 COLLATE "C" ORDER BY actor LIMIT 51`,[r.id,r.lease_token,stage,after])).rows;
+ }else if(ready&&r.metadata?.memberFormat==='blocks-v1')rows=await readFunnelMemberBlocks(c,r.id,r.lease_token,stage,outcome,after);
+ else if(ready)rows=(await c.query(`SELECT actor AS id,reached FROM metric_funnel_members WHERE run_id=$1 AND attempt=$2 AND reached${outcome==='reached'?'>=':'='}$3 AND actor>$4 COLLATE "C" ORDER BY actor LIMIT 51`,[r.id,r.lease_token,stage,after])).rows;
  const counts=ready?r.counts!:[];
  return {runId:r.id,status:r.status==='completed'&&!ready?'invalidated':r.status,steps:ready?r.query.steps.map((step,i)=>({name:step.name,count:counts[i]})):[],participants:rows.slice(0,50),nextCursor:rows.length>50?rows[49].id:null,totalParticipants:ready?(outcome==='reached'?counts[stage-1]:counts[stage-1]-(counts[stage]??0)):0,unit:r.query.unit,windowSeconds:r.query.windowSeconds,recomputing:!ready||s.metadata.recomputing,stale:ready&&g.generation!==r.generation,skippedRecords:s.metadata.skippedRecords,completedAt:r.completed_at?.toISOString()??null,asOf:r.started_at?.toISOString()??null,error:!ready&&projection&&!projection.initialized?`Preprocessing retained events: ${projection.processed_events} scanned.${projection.error?' '+projection.error:''}`:r.error,processedEvents:Number(!ready&&projection&&!projection.initialized?projection.processed_events:r.processed_events),...(r.projection_id?{projectionId:r.projection_id,projectionRevision:r.projection_revision!}:{})};
 }
@@ -90,7 +92,8 @@ export async function processFunnelRun(pool:pg.Pool,options:{batchSize?:number;d
   });
   if(!run)return false;
   await pool.query('DELETE FROM metric_funnel_members WHERE run_id=$1',[run.id]);
-  await reader.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SET LOCAL statement_timeout='30s'; SET LOCAL work_mem='16MB'; SET LOCAL idle_in_transaction_session_timeout='30s'");inTransaction=true;
+  await pool.query('DELETE FROM metric_funnel_member_blocks WHERE run_id=$1',[run.id]);
+  await reader.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SET LOCAL statement_timeout='30s'; SET LOCAL work_mem='16MB'; SET LOCAL cursor_tuple_fraction=1; SET LOCAL idle_in_transaction_session_timeout='30s'");inTransaction=true;
   const g=await generations(reader,run.source_id);
   const s=await eventScope(reader,{kind:'user',id:'worker',name:'Funnel worker',admin:false},run.query);
   const projection=await projectionFor(reader,run.query);
@@ -103,8 +106,8 @@ export async function processFunnelRun(pool:pg.Pool,options:{batchSize?:number;d
    const t=performance.now();
    check(Date.now()<deadline,'Funnel exceeded its total processing budget.');
    const totals=(await reader.query(`WITH reached AS (
-    SELECT actor,max(stage) reached FROM metric_funnel_occurrences WHERE definition_id=$1 AND started_at>=$2 AND reached_at<$3 GROUP BY actor
-   ) SELECT ${run.query.steps.map((_,i)=>`count(*) FILTER(WHERE reached>=${i+1})::int AS stage${i}`).join(',')} FROM reached`,[projection.id,run.query.startsAt,run.query.endsAt])).rows[0];
+    SELECT actor,max(stage) reached FROM metric_funnel_occurrences WHERE definition_id=$1 AND build_generation=$4 AND started_at>=$2 AND reached_at<$3 GROUP BY actor
+   ) SELECT ${run.query.steps.map((_,i)=>`count(*) FILTER(WHERE reached>=${i+1})::int AS stage${i}`).join(',')} FROM reached`,[projection.id,run.query.startsAt,run.query.endsAt,projection.build_generation])).rows[0];
    const counts=run.query.steps.map((_,i)=>totals['stage'+i]);
    await reader.query('COMMIT');inTransaction=false;
    await pool.query(`UPDATE metric_funnel_runs SET status='completed',counts=$3,metadata=$4,generation=$5,erasure=$6,projection_id=$7,projection_revision=$8,started_at=$9,completed_at=clock_timestamp(),lease_until=NULL WHERE id=$1 AND lease_token=$2 AND status='running'`,[run.id,token,JSON.stringify(counts),{...s.metadata,engine:'projection',participants:counts[0],totalMs:performance.now()-t},g.generation,g.erasure,projection.id,projection.revision,projection.as_of]);
@@ -113,24 +116,26 @@ export async function processFunnelRun(pool:pg.Pool,options:{batchSize?:number;d
   const candidate=funnelCandidateSql(run.query,s.config.mapping);
   await reader.query('DECLARE warehouse_funnel_cursor NO SCROLL CURSOR FOR '+candidate.sql,candidate.args);
   const state=new FunnelStream(run.query.steps.length,run.query.windowSeconds*1000);
-  let processed=0;
-  const flush=async(members:{id:string;reached:number}[])=>{
+  let processed=0,lastProgress=0;const blocks=new FunnelMemberBlocks(run.query.steps.length);
+  const flush=async()=>{
    const t=performance.now();
    await transaction(pool,async c=>{
     const live=await c.query("UPDATE metric_funnel_runs SET processed_events=$3,lease_until=now()+interval '3 minutes' WHERE id=$1 AND lease_token=$2 AND status='running' RETURNING id",[run!.id,token,processed]);check(live.rowCount,'Funnel run cancelled.');
-    if(members.length)await c.query(`INSERT INTO metric_funnel_members(run_id,attempt,actor,reached) SELECT $1,$2,id,reached FROM jsonb_to_recordset($3::jsonb) x(id text,reached smallint)`,[run!.id,token,JSON.stringify(members)]);
-   });timing.writeMs+=performance.now()-t;
+    const members=blocks.take();
+    if(members.length)await c.query(`INSERT INTO metric_funnel_member_blocks(run_id,attempt,last_actor,actors,reached,reached_counts,dropped_counts) SELECT $1,$2,last_actor,actors,reached,reached_counts,dropped_counts FROM jsonb_to_recordset($3::jsonb) x(last_actor text,actors text[],reached smallint[],reached_counts integer[],dropped_counts integer[])`,[run!.id,token,JSON.stringify(members)]);
+   });timing.writeMs+=performance.now()-t;lastProgress=performance.now();
   };
   for(;;){
    check(Date.now()<deadline,'Funnel exceeded its total processing budget. Narrow the period or filters.');
    let t=performance.now();const result=await reader.query(`FETCH ${Math.max(1,Math.min(10000,Math.trunc(batch)))} FROM warehouse_funnel_cursor`);timing.readMs+=performance.now()-t;
-   t=performance.now();const members=[];
-   for(const e of result.rows){const member=state.push(e.actor,e.occurred_at.getTime(),e.mask);if(member)members.push(member);processed++;}timing.computeMs+=performance.now()-t;
-   if(!result.rows.length){const member=state.finish();if(member)members.push(member);await flush(members);break;}
-   await flush(members);await options.afterBatch?.();if(options.failAfterBatch)throw new Error('Injected funnel worker failure');
+   t=performance.now();
+   for(const e of result.rows){const member=state.push(e.actor,e.occurred_at.getTime(),e.mask);if(member)blocks.push(member);processed++;}timing.computeMs+=performance.now()-t;
+   if(!result.rows.length){const member=state.finish();if(member)blocks.push(member);blocks.finish();await flush();break;}
+   if(blocks.pending>=8||performance.now()-lastProgress>1000)await flush();
+   await options.afterBatch?.();if(options.failAfterBatch)throw new Error('Injected funnel worker failure');
   }
   await reader.query('COMMIT');inTransaction=false;timing.totalMs=performance.now()-began;
-  await pool.query(`UPDATE metric_funnel_runs SET status='completed',counts=$3,metadata=$4,generation=$5,erasure=$6,completed_at=clock_timestamp(),lease_until=NULL WHERE id=$1 AND lease_token=$2 AND status='running'`,[run.id,token,JSON.stringify(state.counts),{...s.metadata,engine:'events',timing},g.generation,g.erasure]);
+  await pool.query(`UPDATE metric_funnel_runs SET status='completed',counts=$3,metadata=$4,generation=$5,erasure=$6,completed_at=clock_timestamp(),lease_until=NULL WHERE id=$1 AND lease_token=$2 AND status='running'`,[run.id,token,JSON.stringify(state.counts),{...s.metadata,engine:'events',memberFormat:'blocks-v1',timing},g.generation,g.erasure]);
   return true;
  }catch(error){
   if(inTransaction){await reader.query('ROLLBACK');inTransaction=false;}

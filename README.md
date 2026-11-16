@@ -72,6 +72,8 @@ Background event funnels use a dedicated PostgreSQL-backed worker. Development s
 Saved event funnels now preprocess retained sequences once and update affected
 people/accounts as events change. Reporting periods and participant pages reuse
 those occurrences; configured dashboard periods are warmed in the background.
+Initial backfills commit actor checkpoints and resume after failures. Raw-query
+participant snapshots use compact blocks while retaining exact drilldown.
 Run `npm run test:funnel-projections -- --load` for isolated comparative load tests.
 Use `npm run funnels:preprocessing -- --disable` before reverting this feature;
 `--enable` rebuilds retained history. See [preprocessing and rollback](docs/metrics-api.md#incremental-preprocessing-for-saved-funnels).
