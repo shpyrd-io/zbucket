@@ -1,0 +1,415 @@
+{
+  "at": "2026-11-15T01:05:01.568Z",
+  "scope": "Synthetic isolated local PostgreSQL schema; real loopback HTTP to route handlers, not a Next.js server, real browser or production network",
+  "environment": {
+    "node": "v24.16.0",
+    "platform": "darwin",
+    "cpu": "Apple M2",
+    "logicalCpus": 8,
+    "ramGiB": 24
+  },
+  "phases": [
+    {
+      "label": "event-only-20k",
+      "events": 20000,
+      "accepted": 20000,
+      "concurrency": 1,
+      "batchSize": 1000,
+      "errors": 0,
+      "ingestMs": 4933,
+      "acceptedEventsPerSecond": 4054,
+      "ingestAndDrainMs": 5189,
+      "drainMs": 256,
+      "maxSampledBacklog": 1000,
+      "request": {
+        "samples": 20,
+        "p50Ms": 226.4,
+        "p95Ms": 327.64,
+        "p99Ms": 660.66,
+        "maxMs": 660.66
+      },
+      "timelineDuringWrites": {
+        "samples": 25,
+        "p50Ms": 4.3,
+        "p95Ms": 18.26,
+        "p99Ms": 23.91,
+        "maxMs": 23.91
+      }
+    },
+    {
+      "label": "event-only-30k",
+      "events": 30000,
+      "accepted": 30000,
+      "concurrency": 4,
+      "batchSize": 1000,
+      "errors": 0,
+      "ingestMs": 7334,
+      "acceptedEventsPerSecond": 4091,
+      "ingestAndDrainMs": 7745,
+      "drainMs": 412,
+      "maxSampledBacklog": 2000,
+      "request": {
+        "samples": 30,
+        "p50Ms": 964.48,
+        "p95Ms": 1237.75,
+        "p99Ms": 1293.52,
+        "maxMs": 1293.52
+      },
+      "timelineDuringWrites": {
+        "samples": 18,
+        "p50Ms": 197.48,
+        "p95Ms": 280.14,
+        "p99Ms": 280.14,
+        "maxMs": 280.14
+      }
+    },
+    {
+      "label": "event-only-50k",
+      "events": 50000,
+      "accepted": 50000,
+      "concurrency": 8,
+      "batchSize": 1000,
+      "errors": 0,
+      "ingestMs": 9231,
+      "acceptedEventsPerSecond": 5416,
+      "ingestAndDrainMs": 15172,
+      "drainMs": 5941,
+      "maxSampledBacklog": 20000,
+      "request": {
+        "samples": 50,
+        "p50Ms": 1371.94,
+        "p95Ms": 1995.29,
+        "p99Ms": 2172.32,
+        "maxMs": 2172.32
+      },
+      "timelineDuringWrites": {
+        "samples": 36,
+        "p50Ms": 5.57,
+        "p95Ms": 802.31,
+        "p99Ms": 973.83,
+        "maxMs": 973.83
+      }
+    },
+    {
+      "label": "events-and-count-metric-20k",
+      "events": 20000,
+      "accepted": 20000,
+      "concurrency": 4,
+      "batchSize": 1000,
+      "errors": 0,
+      "ingestMs": 6227,
+      "acceptedEventsPerSecond": 3212,
+      "ingestAndDrainMs": 7005,
+      "drainMs": 778,
+      "maxSampledBacklog": 3000,
+      "request": {
+        "samples": 20,
+        "p50Ms": 1108.14,
+        "p95Ms": 1605.3,
+        "p99Ms": 1641.85,
+        "maxMs": 1641.85
+      },
+      "timelineDuringWrites": {
+        "samples": 15,
+        "p50Ms": 10.37,
+        "p95Ms": 386.95,
+        "p99Ms": 386.95,
+        "maxMs": 386.95
+      }
+    }
+  ],
+  "workerErrors": [],
+  "database": {
+    "version": "PostgreSQL 18.3 (Homebrew) on aarch64-apple-darwin23.6.0, compiled by Apple clang version 16.0.0 (clang-1600.0.26.6), 64-bit",
+    "shared_buffers": "128MB",
+    "max_connections": "100"
+  },
+  "retryDeduplicated": 1000,
+  "queries": {
+    "accountTimeline": {
+      "samples": 25,
+      "p50Ms": 1.96,
+      "p95Ms": 2.5,
+      "p99Ms": 2.6,
+      "maxMs": 2.6,
+      "rows": 30
+    },
+    "personTimeline": {
+      "samples": 25,
+      "p50Ms": 773.28,
+      "p95Ms": 1324.38,
+      "p99Ms": 1972.14,
+      "maxMs": 1972.14,
+      "rows": 3
+    },
+    "funnel15k": {
+      "samples": 25,
+      "p50Ms": 139.82,
+      "p95Ms": 273.72,
+      "p99Ms": 858.48,
+      "maxMs": 858.48,
+      "counts": [
+        5000,
+        5000,
+        5000
+      ]
+    },
+    "funnel100k": {
+      "status": 422,
+      "elapsedMs": 195,
+      "body": {
+        "error": "Funnel exceeds 50,000 candidate events. Choose a shorter period."
+      }
+    }
+  },
+  "browserRelay": {
+    "offeredEvents": 6000,
+    "requests": 300,
+    "concurrency": 4,
+    "batchSize": 20,
+    "elapsedMs": 5590,
+    "statuses": {
+      "202": 240,
+      "503": 60
+    },
+    "request": {
+      "samples": 300,
+      "p50Ms": 68.25,
+      "p95Ms": 171.45,
+      "p99Ms": 203.9,
+      "maxMs": 223.12
+    },
+    "upstreamStatuses": {
+      "202": 240,
+      "429": 60
+    },
+    "storedEvents": 4800,
+    "admission": "Relay allowRequest=true to isolate the existing Warehouse integration quota; no simulated browser retries"
+  },
+  "storage": [
+    {
+      "relname": "metric_record_keys",
+      "bytes": "228384768"
+    },
+    {
+      "relname": "metric_event_index",
+      "bytes": "94330880"
+    },
+    {
+      "relname": "metric_facts_default",
+      "bytes": "8708096"
+    },
+    {
+      "relname": "metric_ingestions",
+      "bytes": "245760"
+    },
+    {
+      "relname": "warehouse_audit",
+      "bytes": "122880"
+    },
+    {
+      "relname": "warehouse_apps",
+      "bytes": "65536"
+    },
+    {
+      "relname": "warehouse_rate_limits",
+      "bytes": "57344"
+    },
+    {
+      "relname": "metrics",
+      "bytes": "49152"
+    }
+  ],
+  "reconciliation": {
+    "raw_records": 124800,
+    "indexed_events": 124800,
+    "metric_facts": 20000
+  },
+  "pending": 0,
+  "processRssMiB": {
+    "start": 94,
+    "peak": 301
+  },
+  "completed": true,
+  "cleanedUp": true,
+  "personFilterPlan": [
+    {
+      "Plan": {
+        "Node Type": "Limit",
+        "Parallel Aware": false,
+        "Async Capable": false,
+        "Startup Cost": 0.57,
+        "Total Cost": 1478.93,
+        "Plan Rows": 51,
+        "Plan Width": 18,
+        "Actual Startup Time": 68.691,
+        "Actual Total Time": 68.783,
+        "Actual Rows": 3,
+        "Actual Loops": 1,
+        "Disabled": false,
+        "Shared Hit Blocks": 3056,
+        "Shared Read Blocks": 0,
+        "Shared Dirtied Blocks": 0,
+        "Shared Written Blocks": 0,
+        "Local Hit Blocks": 0,
+        "Local Read Blocks": 0,
+        "Local Dirtied Blocks": 0,
+        "Local Written Blocks": 0,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0,
+        "Plans": [
+          {
+            "Node Type": "Nested Loop",
+            "Parent Relationship": "Outer",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Join Type": "Left",
+            "Startup Cost": 0.57,
+            "Total Cost": 14465.33,
+            "Plan Rows": 499,
+            "Plan Width": 18,
+            "Actual Startup Time": 68.69,
+            "Actual Total Time": 68.782,
+            "Actual Rows": 3,
+            "Actual Loops": 1,
+            "Disabled": false,
+            "Inner Unique": true,
+            "Join Filter": "(identity.anonymous_id = e.user_id)",
+            "Rows Removed by Join Filter": 0,
+            "Filter": "(COALESCE(identity.user_id, e.user_id) = 'user:100'::text)",
+            "Rows Removed by Filter": 99997,
+            "Shared Hit Blocks": 3056,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Plans": [
+              {
+                "Node Type": "Index Scan",
+                "Parent Relationship": "Outer",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Scan Direction": "Forward",
+                "Index Name": "metric_event_time",
+                "Relation Name": "metric_event_index",
+                "Alias": "e",
+                "Startup Cost": 0.42,
+                "Total Cost": 12711.57,
+                "Plan Rows": 99748,
+                "Plan Width": 52,
+                "Actual Startup Time": 0.034,
+                "Actual Total Time": 46.06,
+                "Actual Rows": 100000,
+                "Actual Loops": 1,
+                "Disabled": false,
+                "Index Cond": "((source_id = '01a1dcbc-79a0-7747-9b83-cb9d6dd7c903'::uuid) AND (dataset_key = 'web'::text) AND (schema_version = 1) AND (occurred_at >= '2026-11-12 22:05:00.57-03'::timestamp with time zone) AND (occurred_at < '2026-11-14 01:51:41.57-03'::timestamp with time zone))",
+                "Rows Removed by Index Recheck": 0,
+                "Index Searches": 1,
+                "Shared Hit Blocks": 3054,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0
+              },
+              {
+                "Node Type": "Materialize",
+                "Parent Relationship": "Inner",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 0.15,
+                "Total Cost": 8.18,
+                "Plan Rows": 1,
+                "Plan Width": 116,
+                "Actual Startup Time": 0,
+                "Actual Total Time": 0,
+                "Actual Rows": 0,
+                "Actual Loops": 100000,
+                "Disabled": false,
+                "Storage": "Memory",
+                "Maximum Storage": 17,
+                "Shared Hit Blocks": 2,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "Plans": [
+                  {
+                    "Node Type": "Index Scan",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Scan Direction": "Forward",
+                    "Index Name": "metric_event_identities_pkey",
+                    "Relation Name": "metric_event_identities",
+                    "Alias": "identity",
+                    "Startup Cost": 0.15,
+                    "Total Cost": 8.17,
+                    "Plan Rows": 1,
+                    "Plan Width": 116,
+                    "Actual Startup Time": 0.002,
+                    "Actual Total Time": 0.002,
+                    "Actual Rows": 0,
+                    "Actual Loops": 1,
+                    "Disabled": false,
+                    "Index Cond": "((source_id = '01a1dcbc-79a0-7747-9b83-cb9d6dd7c903'::uuid) AND (dataset_key = 'web'::text) AND (schema_version = 1))",
+                    "Rows Removed by Index Recheck": 0,
+                    "Index Searches": 1,
+                    "Shared Hit Blocks": 2,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "Planning": {
+        "Shared Hit Blocks": 2,
+        "Shared Read Blocks": 0,
+        "Shared Dirtied Blocks": 0,
+        "Shared Written Blocks": 0,
+        "Local Hit Blocks": 0,
+        "Local Read Blocks": 0,
+        "Local Dirtied Blocks": 0,
+        "Local Written Blocks": 0,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0
+      },
+      "Planning Time": 0.194,
+      "Triggers": [],
+      "Execution Time": 68.813
+    }
+  ],
+  "personFilterPlanScope": "Identity filtering and ordering only; excludes the raw-payload join of the full timeline endpoint.",
+  "configuration": {
+    "workers": 2,
+    "workerBatchSize": 1000,
+    "idlePollMs": 20,
+    "largeBatchSize": 1000,
+    "querySamples": 25,
+    "relayBatchSize": 20
+  }
+}

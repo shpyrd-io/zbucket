@@ -44,7 +44,7 @@ All paths below are relative to `/api/v1`.
 | PATCH `/metrics/definitions/{key-or-id}` | `metrics.manageOwn` + creator integration | `{expectedRevision,changes}` → `{metric}`. |
 | DELETE `/metrics/definitions/{key-or-id}` | `metrics.manageOwn` + creator integration; unused metric | `{expectedRevision}` → `{deleted:true,key,id}`. |
 | POST `/metrics/measurements` | Write + configured publisher | `{measurements:[…]}` → 202 receipt. |
-| POST `/metrics/events` | Write on every resulting projection + configured publisher | `{datasetKey,schemaVersion,events:[…]}` → 202 receipt. |
+| POST `/metrics/events` | Write on every resulting projection + configured publisher; `metrics.eventWrite` for exploration-enabled datasets | `{datasetKey,schemaVersion,events:[…]}` → 202 receipt. |
 | POST `/metrics/aggregates` | Write + configured publisher | `{aggregates:[…]}` → 202 receipt. |
 | POST `/metrics/corrections` | Write on old and new projections | `{mode,…}` replacement batch or tombstone → 202 receipt. |
 | GET `/metrics/ingestions/{id}` | Same integration that submitted the batch | `{id,status,recordCount,error,createdAt}`. |
@@ -231,7 +231,7 @@ After registration, send the following to `POST /api/v1/metrics/events`. Every d
 }
 ```
 
-Reuse the same schema across compatible event metrics to project multiple indicators from one event. The token needs publish access to **all** matching projections. New metric creation does not backfill earlier events; publish definitions before their records. Dataset schemas remain available after an unused metric is deleted because other metrics may share them.
+Reuse the same schema across compatible event metrics to project multiple indicators from one event. The token needs publish access to **all** matching projections. New metric creation does not backfill earlier events into metrics; publish metric definitions before their records. Event exploration can separately index retained originals, as described below. Dataset schemas remain available after an unused metric is deleted because other metrics may share them.
 
 ### 2. Read and edit settings
 
@@ -704,3 +704,140 @@ Applications retrieve report data through POST `/metrics/query`, with the same p
 - The Metrics screen refreshes manually. Check ingestion receipts and use Refresh after publishing; a 202 response does not imply that the existing chart has already reloaded.
 
 When helping someone, start with their concrete fact (movement, snapshot, sample, ratio or source aggregate), unit, dimensions and timing. Then walk the actual creation form in order, show one authenticated POST and one query, and only introduce advanced options that matter for that use case.
+
+
+## Event timelines and conversion funnels
+
+**Metrics → Events** adds behavior analysis to the existing dataset ingestion pipeline. It does not create another event collector or duplicate raw payloads. A compact index references the original event revision; the worker publishes it transactionally with metric projections. Enabling exploration also permits an event dataset with no active metric consumers.
+
+### Enable an existing dataset
+
+An administrator registers a dataset schema in Integrations, then chooses **Enable event exploration** in Metrics → Events. Map existing string fields to the action name and at least one identity (person or account); session is optional. All mapped fields remain required by the existing dataset schema. This version supports explicit, stable identifiers, not automatic anonymous identity merging or inferred sessions. A person can act in multiple accounts: send the account at the time of each event.
+
+Equivalent administrator-only `POST /api/v1/metrics/event-datasets`:
+
+```json
+{
+  "sourceId": "SOURCE_ID",
+  "datasetKey": "product_activity",
+  "schemaVersion": 1,
+  "mapping": {"name":"action","userId":"user_id","accountId":"account_id"},
+  "retentionDays": 90
+}
+```
+
+The schema must declare `action`, `user_id`, and `account_id` as strings. Mappings and retention (1–3,650 days) are immutable per dataset schema version; an identical registration is a safe retry. Register a new schema version for a changed contract. `GET /api/v1/metrics/event-datasets` lists available datasets and mapping/backfill status. Human users can see registered datasets; application credentials see only enabled datasets on their own source with an explicit read grant.
+
+Grant `metrics.eventRead: ["product_activity"]` and/or `metrics.eventWrite: ["product_activity"]` on the same integration. Defaults are empty. These grants cover the **entire dataset for that integration**, independently of metric dimension scopes; do not use an event grant as a customer-scoped metric grant. Use separate integrations when customer isolation is required. Publishing to an enabled dataset requires its event write grant **and** all existing metric projection grants. Cross-source event reads are not supported. Keep the `wh_` token on the backend.
+
+Continue sending events to `POST /api/v1/metrics/events`:
+
+```json
+{
+  "datasetKey": "product_activity",
+  "schemaVersion": 1,
+  "events": [{
+    "eventId": "product-activity-123",
+    "occurredAt": "2026-11-14T10:00:00Z",
+    "data": {"action":"feature_used","user_id":"ana","account_id":"acme"}
+  }]
+}
+```
+
+Existing receipt polling, 1,000-record batches, deduplication, corrections, and tombstone retractions apply. Event IDs remain unique across the integration's input modes and datasets. Enabling a dataset queues a bounded backfill of retained, processed originals; it cannot recover payloads already expired or purged. Invalid historical records are skipped and counted in `skippedRecords`. New events with invalid mapped fields are rejected before acceptance. Adding metric definitions later still does not backfill their numerical projections.
+
+### Timeline query
+
+`POST /api/v1/metrics/event-timeline` accepts:
+
+```json
+{
+  "datasetKey":"product_activity",
+  "schemaVersion":1,
+  "startsAt":"2026-11-14T00:00:00Z",
+  "endsAt":"2026-11-15T00:00:00Z",
+  "accountId":"acme",
+  "limit":50
+}
+```
+
+Application identity supplies the source; human queries must add `sourceId`. Optional exact filters are `accountId`, `userId`, and `name` (AND). The period is `[startsAt, endsAt)`, at most 366 days and within dataset retention. Results contain `events`, `nextCursor`, `recomputing`, `retainedSince`, and `skippedRecords`. Each event includes the original data, event ID, revision, occurrence/receipt times, and mapped identities. Pass the returned `nextCursor` unchanged as `after` for the next page; keep all other query fields unchanged. Pages contain 1–100 events, newest first. Corrections arriving between pages may change the live history; pagination is not a frozen export.
+
+### Ordered funnel query and drilldown
+
+`POST /api/v1/metrics/event-funnel` accepts the same dataset and period, plus:
+
+```json
+{
+  "unit":"account",
+  "windowSeconds":86400,
+  "steps":[
+    {"name":"app_opened"},
+    {"name":"signup_completed"},
+    {"name":"feature_used","properties":{"feature":"report_export"}}
+  ]
+}
+```
+
+Use `unit: "person"` to require one person to complete the sequence, or `"account"` to allow different people in the same account. The identity field must be mapped. There are 2–8 steps; optional per-step `properties` are up to eight exact string comparisons against original event data. Other events may occur between steps. Each occurrence can satisfy only one step; repeated step names need separate events. Events are ordered by occurrence time then event ID for deterministic ties. The conversion window is 1 second–90 days from the first step, inclusive at its end; all steps must also lie inside the selected report period. Any qualifying repeated attempt counts, but each identity contributes once per step. People are grouped within the dataset regardless of account; choose account mode for customer-level conversion.
+
+The response contains cumulative `steps: [{name,count}]`, `unit`, `windowSeconds`, `candidateEvents`, processing metadata and an identity page. Select `stage` (one-based) and `outcome: "reached"` to list identities reaching that stage, or `"dropped"` for identities whose deepest stage is exactly that stage. Drop-off is observed in the selected period; recent entrants may still convert later. `participants` contains `{id,reached}`; `totalParticipants` is the matching cohort size. Pass `nextCursor` as `after` to paginate 50 identities at a time. Use a returned ID as `accountId` or `userId` in the timeline query with the same dataset and period.
+
+Interactive funnels read at most 50,000 candidate events and 16 MiB of step-filter property data and run under a five-second database statement timeout. Oversized queries fail explicitly rather than returning sampled or truncated counts. Queries compute over a consistent database snapshot; there is no persisted funnel report cache or saved funnel definition in this version. The UI supports event-name steps; property filters are available through the API. Percentages shown are relative to the first step.
+
+### Retention and publication
+
+Event history retention is independent of metric rollup retention. Metric retention and metric-specific purge preserve originals still owned by an enabled event dataset; **purging a metric does not delete the account timeline**. Use an authorized event tombstone correction to retract an occurrence from the timeline and its projections. Historical original revisions remain provenance until retention cleanup; this is not a personal-data erasure endpoint.
+
+The worker removes expired index entries and eventually compacts expired originals when no metric or event consumer still needs them. Compact identity hashes continue preventing duplicate ingestion. Retried expired events do not restore history; corrections cannot revive compacted records. A metric consumer whose raw correction window expired can still prevent a shared event correction, preserving existing metric contracts. While ingestion/backfill is pending, `recomputing` is true and results are provisional. Retained history can be incomplete if records expired before exploration was enabled; no complete-history claim is made.
+
+The TypeScript client exposes `events`, `eventTimeline`, and `eventFunnel`. The Python client's `metrics` namespace exposes `events`, `event_timeline`, and `event_funnel`. Both use the existing integration credential.
+
+### Browser capture and identity association
+
+See [JavaScript SDK and first-party relay](../sdk/javascript/README.md) for installation, Next.js integration and delivery limits. Browser capture uses the existing Events endpoint with the same `wh_` integration credential held only by the application's backend.
+
+New dataset versions can declare `string?` (required field, nullable value) and `properties` (up to 50 scalar JSON values, strings up to 1,000 characters, finite numbers, booleans or null). Existing string/decimal/datetime contracts are unchanged. Event mappings can include `properties` to select the object used for funnel property filters. Exact filters accept scalar values and preserve JSON types.
+
+`POST /api/v1/metrics/event-identify` requires the integration's own-source `metrics.eventWrite` dataset grant:
+
+```json
+{"datasetKey":"app_behavior","schemaVersion":1,"anonymousId":"anon:00000000-0000-4000-8000-000000000001","userId":"user:123"}
+```
+
+An association is immutable and idempotent; relinking to another user returns 409. Timeline results resolve `userId` and expose `originalUserId`; person funnels use the same resolution. Account filtering uses the original event-time account, never a user's current organization. Aliases are scoped to source, dataset and schema version and do not rewrite original payloads or metric projections. This endpoint is for trusted backends, not a public browser endpoint.
+
+### Daily event metrics and saved conversion funnels
+
+Administrators can enable **Process events by day** in the Event explorer. `POST /api/v1/metrics/event-processing` accepts `sourceId`, `datasetKey`, `schemaVersion`, a new metric `key`, `name`, and `includeHistory` (boolean). It atomically creates an immutable UTC daily count metric, grouped by the mapped action field, and grants its owning integration read/write access to that metric. All schema versions of that dataset must share the action field. The existing event ingestion and worker handle new events; no browser credential changes are needed.
+
+With `includeHistory: true`, the same transaction queues retained originals for background processing. `GET /api/v1/metrics/event-processing` exposes status, scanned/inserted/skipped counts and retry errors to administrators. Worker batches commit their cursor, facts and rollups together, preserve accepted original envelopes, and skip already-counted, superseded, explicitly purged or expired records. New publication and history work both receive worker time. History is bounded by the queue's receipt cutoff; events received after enablement use normal live projections. Repeating enablement with the same key reuses the metric; requesting history after initially disabling it queues history once. Pausing the metric affects new projections; an already requested historical job continues. Counts remain provisional while its history job is unfinished. A running worker is required; closing the browser does not stop it.
+
+Daily values count **occurrences**, not unique conversion cohorts. Daily aggregates are retained for at least 730 days; original/fact detail follows the event dataset's retention at creation. The original event retention and the new metric's contract are not changed by reporting queries.
+
+Saved library queries can instead use `config.eventFunnel: {query: {sourceId, datasetKey, schemaVersion, startsAt, endsAt, unit, windowSeconds, steps}, period}`. This is mutually exclusive with `config.query`. Reporting periods resolve in the configured `timezone` (UTC by default). Funnel charts reuse the existing vertical/horizontal visualization and request persistent background runs. The legacy synchronous endpoint retains its 50,000-candidate budget; the Explorer and Library use the background engine described below. Each view uses one event-funnel query; mixing it with metric totals or summing daily unique counts would change its meaning and is rejected. Such views can be placed beside metric views in the same dashboard. Sharing and ownership rules apply to all query/view/dashboard references.
+
+Use **Save funnel query** → **Create view** → **Add to new dashboard**, or select the saved view in an existing dashboard. The library editor supports editing the period, event steps, unique identity and conversion window. This does not introduce a scheduled or materialized daily funnel.
+
+
+### Persistent background funnel runs
+
+Run `npm run worker:funnels` alongside the ingestion worker in deployed environments. `npm run dev` starts both workers automatically. Closing the browser does not stop processing. The funnel worker uses its own process/pool; the PostgreSQL queue admits at most 20 active distinct queries per source, and one calculation runs per schema at a time.
+
+`POST /api/v1/metrics/event-funnel-runs` accepts the same exact ordered-funnel scope as `event-funnel`. It returns a `runId`, `status`, `processedEvents`, and an empty `steps` array while queued/running. There is no silent sampling and no zero-valued placeholder funnel. Query-equivalent requests reuse the active run. Completed results contain `steps`, `participants`, `nextCursor`, `totalParticipants`, `asOf`, `completedAt`, `stale`, and `recomputing`.
+
+Read/paginate a fixed result with `POST /api/v1/metrics/event-funnel-runs/:id` and `{stage, outcome, after}`, or GET that path with the equivalent query parameters. Current dataset grants and event retention are checked on every read. `outcome` is `reached` or `dropped`; cursors page identities in deterministic byte order. Participant pagination never recalculates the sequence. A run is not a new authorization boundary: sharing a run ID does not grant event access.
+
+POST `{action:"cancel"}` to the run path to cancel a run you requested. POST `{action:"retry"}` to retry a failed/cancelled run; the dataset read grant is required. Worker failures retry up to three times with backoff. Expired leases can be recovered; attempt tokens prevent stale workers from publishing. Partial participants are never visible. A retry restarts the calculation from a new consistent snapshot rather than resuming a cursor against changed data.
+
+Each run reads a repeatable-read snapshot through a PostgreSQL cursor, ordered by resolved person/account, occurrence time, and event ID with C collation. Equal timestamps have a deterministic event-ID order, not a guarantee of real-world causal order. The streaming evaluator keeps one participant's sequence state and a bounded batch in memory. Other events may occur between funnel steps; a single occurrence cannot satisfy two repeated steps. Repeated entry attempts can convert within the window; a participant counts once per report. All steps must fall within the selected `[startsAt, endsAt)` period. Accounts use event-time membership, never retroactive person-to-account assignment.
+
+The worker fetches 5,000 candidates per batch, uses a 30-second SQL statement timeout, and checks a 120-second total deadline between batches. An in-flight statement may extend that deadline by up to its statement timeout. There is no fixed candidate-count cap in this path. Resource-budget failures are explicit errors, not partial results. Property filters are parameterized, typed JSON comparisons; requests without property filters avoid the original-payload join.
+
+Statement-level generation triggers track index and identity changes transactionally. New events can reuse a completed result for up to five minutes, marked `stale` with its snapshot time. Index deletions/updates and identity changes invalidate older results immediately. Old results can return `invalidated`; request a new run instead of mixing pages. Cache cleanup removes terminal runs after seven days, on invalidation, or when their requested history expires. Metrics-only purges do not delete independent behavioral history. Retained cached counts do not extend event retention.
+
+Saved event-funnel configurations support `period:"last_7_days"`, `timezone`, and `compare:"none"|"previous_period"|"previous_year"|"custom"`. Custom comparisons provide `compareStartsAt` and `compareEndsAt` as ISO instants. `previous_period` is the immediately preceding equal elapsed duration; `previous_year` preserves local calendar dates/times, clamping leap days. These are distinct from a full previous-calendar-month comparison, which can be selected with custom bounds. Rolling periods share five-minute reference boundaries. Current and comparison runs each use a consistent snapshot, potentially at different times; both snapshot times are disclosed. Counts and conversion rates are calculated independently, never by summing daily unique counts or averaging daily rates. Calendar timezone affects presets; fixed input timestamps retain their explicit offsets.
+
+The Library polls queued/running panels and renders the same completed data as the Explorer, with an additional comparison table when configured. Daily count projections remain independent. Entry-cohort periods that permit completion after the reporting end, incremental per-participant materialization, and durable input spooling for long-running retries are not implemented.
+
+Validation: `npm run test:funnel-runs -- --load` runs isolated PostgreSQL acceptance plus a 150,000-person / 525,000-event synthetic published-index fixture, including a property-filtered four-step funnel, durable participants and cached reads. `FUNNEL_LOAD_PEOPLE=1000000` increases the fixture to one million participants. This measures the background query path, not ingestion throughput or production concurrency.

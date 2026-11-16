@@ -1,0 +1,10 @@
+{
+  "at": "2026-11-15T18:19:47.040Z",
+  "passed": 4,
+  "checks": [
+    "Daily counts: durable queue, rollback, concurrent workers, immutable originals, idempotent enablement and retries",
+    "Live event projections and future-only option; ordered cross-day distinct-person funnel saved into query/view/dashboard, with mixed-query and sharing boundaries",
+    "Historical projection authorization, retraction, rollup rebuild and live funnel refresh",
+    "History can be enabled later; replay skips existing facts and never resurrects purged records"
+  ]
+}

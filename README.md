@@ -22,7 +22,7 @@ Open http://localhost:4332. `dev` starts web and worker together. The local data
 
 ## Explore
 
-- **Metrics:** define a metric, explore dimensions and comparisons, choose charts, save queries/views and compose dashboards.
+- **Metrics:** define a metric, explore dimensions and comparisons, choose charts, save queries/views and compose dashboards. **Metrics → Events** explores account/person timelines and ordered conversion funnels from existing event datasets. Administrators enable field mappings and independent history retention; integrations need explicit dataset grants.
 - **Metric cleanup (administrators):** select a metric → Administration → Purge data. Preview a period and/or exact dimension filter, then confirm. Aggregates and audit history are updated together.
 - **Knowledge:** search, browse collections, write Markdown and restore revisions. `/` focuses search; Enter releases focus; J/K selects records.
 - **Integrations:** permissions, collections, expiring credentials, revocation/rotation and API activity. Hold Alt to reveal navigation hints; `g m`, `g k`, `g i` navigate.
@@ -54,6 +54,7 @@ npm run lint
 npm run typecheck
 npm test
 npm run test:acceptance
+npm run test:events
 npm run test:api-docs
 npm run metrics:verify-resolution
 npm run metrics:verify-missing-data
@@ -62,3 +63,8 @@ npm run build
 ```
 
 Tests use synthetic data and isolated PostgreSQL schemas. `experiments/` contains test reports. See [Deployment](ops/deployment.md) for the authenticated Shpyrd deployment, dedicated database, worker, shared export storage and integration routing. No Tower data migration is performed.
+
+Browser event collection: [JavaScript SDK, versioned script and Next.js relay](sdk/javascript/README.md). Build with `npm run build:sdk`; the `wh_` credential stays in the application's backend.
+
+
+Background event funnels use a dedicated PostgreSQL-backed worker. Development starts it automatically; other environments must run `npm run worker:funnels` alongside `npm run worker`. Explorer/dashboard funnel results are cached, exact per-period unique counts with paginated participant drilldown; the legacy synchronous API remains available for small queries. See [the funnel run API](docs/metrics-api.md#persistent-background-funnel-runs) for lifecycle, comparison, retention and resource limits.

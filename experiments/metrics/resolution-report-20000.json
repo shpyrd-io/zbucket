@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-09T14:56:54.736Z",
+  "at": "2026-11-14T14:50:04.867Z",
   "checks": [
     "Hourly materialization and total",
     "Paginated grouped series retain full total",
@@ -34,8 +34,8 @@
     "20000 records across 1,000 dimension tuples, exact total"
   ],
   "timings": {
-    "ingestAndProcessMs": 4174.183875,
-    "dailyQueryMs": 24.014125000000604
+    "ingestAndProcessMs": 15417.30175,
+    "dailyQueryMs": 85.77737500000148
   },
   "records": 20000,
   "limitations": [

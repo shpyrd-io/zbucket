@@ -1,4 +1,5 @@
 "use client";
+import {FunnelComparison} from './funnel-comparison';
 import {
   useEffect,
   useId,
@@ -1004,6 +1005,7 @@ export function MetricChart({
         </div>
       )}
       {hidden.length > 0 && <p>Hidden series do not change query totals.</p>}
+      {data.measurementKind==="event_funnel"&&data.rows.some(r=>r.previous!==undefined)&&<FunnelComparison rows={data.rows}/>}
       {!showTable && !issue && ["dumbbell","slope"].includes(options.kind) && <p className="metric-comparison-key">○ Previous month <span>● Selected month</span></p>}
       <details className="metric-chart-notes">
         <summary>Query details{data.quality && data.quality !== "complete" ? ` · ${data.quality}` : ""}</summary>

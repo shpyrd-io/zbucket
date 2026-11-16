@@ -1,3 +1,4 @@
+import {maintainEventRetention} from './events';
 import type pg from 'pg';
 import type { MetricDefinition } from '@/models/metrics/types';
 import { getMetric } from './service';
@@ -39,7 +40,7 @@ export async function publishRollups(c:pg.PoolClient,incremental=false){
 
 // Contributions contain only newly published records, never accumulated bucket totals.
 // Merge the same sufficient statistics as a rebuild; corrections still take that bounded path.
-async function appendRollups(c:pg.PoolClient,m:MetricDefinition & {id:string;version:number}){
+export async function appendRollups(c:pg.PoolClient,m:MetricDefinition & {id:string;version:number}){
  const base=m.storagePolicy!.baseResolution;
  const bucket=bucketSql('f.observed_at',base,'$3');
  const finish=endSql(bucket,base,'$3');
@@ -97,9 +98,12 @@ export async function maintainMetricRetention(pool:pg.Pool,now=new Date()){
    // Policy metrics do not use the legacy hourly materialization.
    await c.query('DELETE FROM metric_aggregate_states r USING(SELECT bucket,dimensions FROM metric_aggregate_states WHERE metric_id=$1 AND version=$2 LIMIT 10000) old WHERE r.metric_id=$1 AND r.version=$2 AND r.bucket=old.bucket AND r.dimensions=old.dimensions',[m.id,m.version]);
   }
+  await maintainEventRetention(c);
   // Preserve compact identity hashes for idempotency. Only remove payloads once all consumers expired raw detail.
   await c.query(`WITH expired AS (SELECT r.source_id,r.record_id,r.revision FROM metric_record_keys r
    WHERE r.processed AND r.payload ? 'original' AND jsonb_array_length(coalesce(r.payload->'projections','[]'::jsonb))>0
+   AND NOT EXISTS(SELECT 1 FROM metric_event_index e WHERE e.source_id=r.source_id AND e.record_id=r.record_id)
+   AND NOT EXISTS(SELECT 1 FROM metric_event_datasets d WHERE NOT d.backfilled AND d.source_id=r.source_id AND d.dataset_key=r.payload->'original'->>'datasetKey' AND d.schema_version::text=r.payload->'original'->>'schemaVersion')
    AND NOT EXISTS(SELECT 1 FROM metric_facts f WHERE f.source_id=r.source_id AND f.record_id=r.record_id AND f.revision=r.revision)
    AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(r.payload->'projections') p LEFT JOIN metric_retention_watermarks w
     ON w.metric_id=(p->>'metricId')::uuid AND w.version=(p->>'version')::int

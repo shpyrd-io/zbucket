@@ -1,3 +1,4 @@
+import {funnelSteps,type FunnelStep} from './events';
 import { check, object, text, instant } from "./validation";
 import { chartKinds, type ChartOptions } from "./visualization";
 import { queryIntervals } from "./resolution";
@@ -15,6 +16,7 @@ export const periods = [
   "ytd",
   "last_year",
   "last_30_days",
+  "last_7_days",
   "last_2_years",
 ] as const;
 export type SavedQuery = {
@@ -22,7 +24,15 @@ export type SavedQuery = {
   period: (typeof periods)[number];
   compare: boolean;
 };
+export type SavedEventFunnel = {
+ timezone?:string;
+ compare?:'none'|'previous_period'|'previous_year'|'custom';
+ compareStartsAt?:string;compareEndsAt?:string;
+ query: {sourceId:string;datasetKey:string;schemaVersion:number;startsAt:string;endsAt:string;unit:"person"|"account";windowSeconds:number;steps:FunnelStep[]};
+ period: (typeof periods)[number];
+};
 export type LibraryConfig = {
+  eventFunnel?: SavedEventFunnel;
   query?: SavedQuery;
   queryIds?: string[];
   viewIds?: string[];
@@ -54,7 +64,20 @@ export function libraryInput(input: unknown) {
     "Choose visibility.",
   );
   let clean: LibraryConfig = {};
-  if (kind === "query") {
+  if (kind === "query" && config.eventFunnel) {
+    check(!config.query,"Choose one query source.");
+    const saved=object(config.eventFunnel),q=object(saved.query);
+    check(uuid(q.sourceId),"Choose an event source.");
+    check(periods.includes(saved.period as never),"Choose a reporting period.");
+    check(Number.isInteger(q.schemaVersion)&&Number(q.schemaVersion)>0,"Invalid schema version.");
+    check(q.unit==="person"||q.unit==="account","Choose person or account.");
+    check(Number.isInteger(q.windowSeconds)&&Number(q.windowSeconds)>=1&&Number(q.windowSeconds)<=90*86400,"Conversion window must be 1 second–90 days.");
+    if(saved.period==="fixed")check(instant(q.endsAt)>instant(q.startsAt)&&Date.parse(String(q.endsAt))-Date.parse(String(q.startsAt))<=366*86400000,"Choose a period of at most 366 days.");
+    const timezone=String(saved.timezone??'UTC');try{new Intl.DateTimeFormat('en',{timeZone:timezone}).format();}catch{check(false,'Choose a valid timezone.');}
+    const compare=saved.compare??'none';check(['none','previous_period','previous_year','custom'].includes(String(compare)),'Choose a comparison period.');
+    if(compare==='custom')check(instant(saved.compareEndsAt)>instant(saved.compareStartsAt)&&Date.parse(String(saved.compareEndsAt))-Date.parse(String(saved.compareStartsAt))<=366*86400000,'Choose a comparison period of at most 366 days.');
+    clean.eventFunnel={timezone,compare:compare as SavedEventFunnel['compare'],...(compare==='custom'?{compareStartsAt:instant(saved.compareStartsAt),compareEndsAt:instant(saved.compareEndsAt)}:{}),period:saved.period as SavedEventFunnel["period"],query:{sourceId:String(q.sourceId),datasetKey:text(q.datasetKey,"Dataset"),schemaVersion:Number(q.schemaVersion),startsAt:String(q.startsAt??""),endsAt:String(q.endsAt??""),unit:q.unit,windowSeconds:Number(q.windowSeconds),steps:funnelSteps(q.steps)}};
+  } else if (kind === "query") {
     const q = object(config.query),
       query = object(q.query);
     check(uuid(query.metricId), "Choose a metric.");
@@ -112,7 +135,8 @@ export function libraryInput(input: unknown) {
     clean = { [key]: ids };
   }
   if (kind === "view" || kind === "query") {
-    const chart = object(config.chart ?? { kind: "line" });
+    const chart = object(config.chart ?? (clean.eventFunnel?{kind:"funnel",stageTotals:true}:{ kind: "line" }));
+    if(clean.eventFunnel)check(chart.kind==="funnel","Event funnels require a funnel chart.");
     check(
       chartKinds.includes(chart.kind as never),
       "Choose a supported chart.",
@@ -135,6 +159,7 @@ export function libraryInput(input: unknown) {
       check(chart.orientation === "vertical" || chart.orientation === "horizontal", "Choose a supported chart orientation.");
       c.orientation = chart.orientation;
     }
+    if(clean.eventFunnel)c.stageTotals=true;
     clean.chart = c;
   } else {
     check(

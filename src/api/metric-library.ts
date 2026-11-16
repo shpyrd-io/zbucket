@@ -16,6 +16,7 @@ export type LibraryRun = {
     chart: ChartOptions;
     data?: PlotData;
     error?: string;
+    processing?:boolean;runId?:string;funnelStatus?:string;
   }[];
 };
 const post = (path: string, data: unknown) =>

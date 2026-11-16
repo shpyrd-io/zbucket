@@ -121,7 +121,7 @@ export async function purgeMetric(pool:pg.Pool, principal:Principal, id:string, 
         coalesce((SELECT jsonb_agg(p) FROM jsonb_array_elements(r.payload->'projections') p
           WHERE NOT(p->>'metricId'=$1::text AND (p->>'version')::int=$2)),'[]'::jsonb) projections
       FROM metric_record_keys r JOIN purge_records t USING(source_id,record_id)
-    ) UPDATE metric_record_keys r SET payload=CASE WHEN jsonb_array_length(s.projections)=0
+    ) UPDATE metric_record_keys r SET payload=CASE WHEN jsonb_array_length(s.projections)=0 AND NOT EXISTS(SELECT 1 FROM metric_event_datasets d WHERE d.source_id=r.source_id AND d.dataset_key=r.payload->'original'->>'datasetKey' AND d.schema_version::text=r.payload->'original'->>'schemaVersion')
       THEN (s.payload-'original')||jsonb_build_object('projections',s.projections,'purged',true)
       ELSE jsonb_set(s.payload,'{projections}',s.projections) END
       FROM stripped s WHERE (r.source_id,r.record_id,r.revision)=(s.source_id,s.record_id,s.revision)`,[m.id,m.version]);

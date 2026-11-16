@@ -1,4 +1,7 @@
+import {funnelSchema} from '../metrics/funnel-storage';
+import {eventMetricSchema} from '../metrics/event-metric-storage';
 import pg from 'pg';
+import {eventSchema} from '../metrics/event-storage';
 import { check } from '@/models/metrics/validation';
 export type MetricDb = pg.Pool;
 export function metricsConnection(url=process.env.DATABASE_URL){check(url?.startsWith('postgres'),'Metrics requires PostgreSQL.',503);return new pg.Pool({connectionString:url,max:3,application_name:'warehouse-metrics',statement_timeout:15000});}
@@ -40,6 +43,7 @@ CREATE TABLE IF NOT EXISTS metric_facts_default PARTITION OF metric_facts DEFAUL
 CREATE INDEX IF NOT EXISTS metric_facts_query ON metric_facts(metric_id,version,observed_at);
 CREATE INDEX IF NOT EXISTS metric_facts_received ON metric_facts(metric_id,version,received_at DESC);
 CREATE INDEX IF NOT EXISTS metric_facts_record ON metric_facts(source_id,record_id);
+${eventMetricSchema}
 CREATE TABLE IF NOT EXISTS metric_aggregate_states(metric_id uuid NOT NULL,version integer NOT NULL,bucket timestamptz NOT NULL,dimensions jsonb NOT NULL,total numeric NOT NULL,weight numeric NOT NULL,n numeric NOT NULL,d numeric NOT NULL,min numeric,max numeric,last numeric,last_at timestamptz,count bigint NOT NULL,generation bigint NOT NULL DEFAULT 1,PRIMARY KEY(metric_id,version,bucket,dimensions));
 CREATE TABLE IF NOT EXISTS metric_dimension_sets(metric_id uuid NOT NULL,version integer NOT NULL,dimensions jsonb NOT NULL,PRIMARY KEY(metric_id,version,dimensions));
 CREATE TABLE IF NOT EXISTS metric_coverage(source_id uuid NOT NULL,metric_id uuid NOT NULL,version integer NOT NULL,dimensions jsonb NOT NULL,starts_at timestamptz NOT NULL,ends_at timestamptz NOT NULL,received_at timestamptz NOT NULL DEFAULT now(),CHECK(ends_at>starts_at),PRIMARY KEY(source_id,metric_id,version,dimensions,starts_at,ends_at));
@@ -55,5 +59,5 @@ CREATE TABLE IF NOT EXISTS metric_purges(id uuid PRIMARY KEY,metric_id uuid NOT 
 CREATE INDEX IF NOT EXISTS metric_purge_history ON metric_purges(metric_id,created_at DESC);
 CREATE TABLE IF NOT EXISTS metric_purged_records(source_id uuid NOT NULL,record_id text NOT NULL,metric_id uuid NOT NULL,version integer NOT NULL,purge_id uuid NOT NULL REFERENCES metric_purges,PRIMARY KEY(source_id,record_id,metric_id,version));
 CREATE TABLE IF NOT EXISTS metric_activity(id uuid PRIMARY KEY,metric_id uuid,actor_id uuid,action text NOT NULL,detail jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now());
-`);await c.query('COMMIT');}catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}}
+`);await c.query(eventSchema);await c.query(funnelSchema);await c.query('COMMIT');}catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}}
 export async function transaction<T>(pool:pg.Pool,fn:(c:pg.PoolClient)=>Promise<T>){const c=await pool.connect();try{await c.query('BEGIN');const result=await fn(c);await c.query('COMMIT');return result;}catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}}

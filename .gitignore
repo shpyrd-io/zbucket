@@ -27,3 +27,6 @@ __pycache__/
 *.egg-info/
 sdk/python/build/
 sdk/python/dist/
+
+# JavaScript SDK package outputs (static script is checked in)
+sdk/javascript/dist/

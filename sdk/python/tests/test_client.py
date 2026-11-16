@@ -54,6 +54,18 @@ class ClientTests(unittest.TestCase):
     def body(self):
         return json.loads(self.server.requests[-1][3])
 
+    def test_behavior_queries_preserve_cursor_and_scope(self):
+        query = {"datasetKey": "activity", "schemaVersion": 1, "accountId": "acme",
+                 "after": {"occurredAt": "2026-11-14T00:00:00Z", "eventId": "123"}}
+        self.reply({"events": [], "nextCursor": None})
+        self.client.metrics.event_timeline(query)
+        self.assertEqual(self.server.requests[-1][1], "/api/v1/metrics/event-timeline")
+        self.assertEqual(self.body(), query)
+        self.reply({"steps": [], "participants": []})
+        self.client.metrics.event_funnel({"datasetKey": "activity", "unit": "account"})
+        self.assertEqual(self.server.requests[-1][1], "/api/v1/metrics/event-funnel")
+        self.assertEqual(self.body()["unit"], "account")
+
     def test_auth_decimal_and_datetime_encoding(self):
         self.reply({"id": "receipt", "status": "accepted"}, 202)
         self.client.metrics.measurements([{"measurementId": "stable", "value": Decimal("9007199254740993.10"),

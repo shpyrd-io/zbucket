@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-09T15:00:47.764Z",
+  "at": "2026-11-14T14:50:08.031Z",
   "checks": [
     "Read-only preview, exact key confirmation, stale preview rejection, half-open period plus dimension, rebuilt hourly/daily aggregates, split coverage and preserved snapshots",
     "Retries cannot resurrect purged observations; corrections require a new record identity for deliberate republishing",
@@ -17,11 +17,11 @@
     "20,000 observations across 1,000 dimension tuples retain exact totals outside the purged period"
   ],
   "timings": {
-    "preview20000Ms": 260.0150000000003,
-    "purge20000Ms": 974.2694170000004
+    "preview20000Ms": 1474.5732499999976,
+    "purge20000Ms": 1699.536583000001
   },
   "limitations": [
     "Local isolated PostgreSQL run; existing user metrics were not purged.",
-    "Saved snapshots and export files are historical records, not erased by metric cleanup."
+    "Saved snapshots are historical records, not erased by metric cleanup."
   ]
 }

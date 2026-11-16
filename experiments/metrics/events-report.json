@@ -1,0 +1,20 @@
+{
+  "at": "2026-11-15T18:13:08.668Z",
+  "checks": [
+    "Existing events endpoint accepts event-only datasets; durable retries and publication rollback preserve one event",
+    "Default deny, own-source isolation, independent dataset grants and permission narrowing",
+    "Timeline keyset pagination, event properties, account versus person funnels and abandonment drilldown",
+    "Corrections move account histories and recompute funnels; retractions remove indexed occurrences",
+    "Backfill retained originals with microsecond cursors; skip incompatible pre-configuration work without blocking; preserve timeline when metric raw retention expires",
+    "Independent event retention expires originals while preserving retry identities",
+    "Property-filtered funnel semantics and explicit rejection above the candidate budget",
+    "Browser relay: anonymous visit, authenticated linking, typed properties, retries, person conversion and account-at-event timeline",
+    "Indexed person selection preserves alias merging, equal-time pagination, account filters and canonical identity semantics",
+    "Independent event request and volume quotas, concurrent admission, shared credentials and next-window recovery"
+  ],
+  "timings": {
+    "ingestAndProcess1000Ms": 284.30383300000017,
+    "timeline100Ms": 5.75454099999979
+  },
+  "scope": "Isolated synthetic PostgreSQL schema; no production load claim"
+}

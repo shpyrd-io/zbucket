@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "node --env-file-if-exists=.env --import tsx scripts/dev.ts",
     "start": "next start -p ${PORT:-3000}",
+    "build:sdk": "node sdk/javascript/build.mjs",
+    "prebuild": "npm run build:sdk",
     "build": "NEXT_TELEMETRY_DISABLED=1 next build --webpack",
-    "lint": "oxlint src app scripts",
+    "lint": "oxlint src app scripts sdk/javascript/src examples",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:migrate": "node --env-file-if-exists=.env --import tsx scripts/migrate.ts",
@@ -21,7 +23,12 @@
     "seed:charts": "node --env-file-if-exists=.env --import tsx scripts/seed-chart-gallery.ts",
     "test:api-docs": "node --env-file-if-exists=.env --import tsx scripts/verify-api-docs.ts",
     "test:metric-management": "node --env-file-if-exists=.env --import tsx scripts/verify-metric-management.ts",
-    "test:python-sdk": "node --env-file-if-exists=.env --import tsx scripts/verify-python-sdk.ts"
+    "test:python-sdk": "node --env-file-if-exists=.env --import tsx scripts/verify-python-sdk.ts",
+    "test:events": "node --env-file-if-exists=.env --import tsx scripts/verify-events.ts",
+    "test:load-events": "node --env-file-if-exists=.env --import tsx scripts/load-events.ts",
+    "test:event-reporting": "node --env-file-if-exists=.env --import tsx scripts/verify-event-reporting.ts",
+    "worker:funnels": "node --env-file-if-exists=.env --import tsx scripts/funnel-worker.ts",
+    "test:funnel-runs": "node --env-file-if-exists=.env --import tsx scripts/verify-funnel-runs.ts"
   },
   "dependencies": {
     "@shpyrd/ui": "file:vendor/shpyrd-ui",
@@ -49,7 +56,8 @@
     "@types/react-dom": "^19.2.7",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
-    "vitest": "^5.0.2"
+    "vitest": "^5.0.2",
+    "esbuild": "0.28.2"
   },
   "engines": {
     "node": "24.x"

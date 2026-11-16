@@ -1,3 +1,6 @@
+import {requestFunnelRun,FunnelProcessing} from './funnel-runs';
+import {funnelPeriods} from '@/models/metrics/funnel-periods';
+import {eventFunnelPlot} from '@/models/metrics/event-funnel-plot';
 import { metricDistribution } from "./distribution";
 import type pg from "pg";
 import { v7 as uuid } from "uuid";
@@ -79,6 +82,11 @@ export async function librarySave(
         item.visibility !== "company" || row.visibility === "company",
         "Share the referenced inputs before sharing this item.",
       );
+    }
+    if(item.config.eventFunnel){
+      const q=item.config.eventFunnel.query;
+      const row=(await c.query("SELECT mapping FROM metric_event_datasets WHERE source_id=$1 AND dataset_key=$2 AND schema_version=$3",[q.sourceId,q.datasetKey,q.schemaVersion])).rows[0];
+      check(row?.mapping[q.unit==="person"?"userId":"accountId"],"Event dataset or identity mapping unavailable.",404);
     }
     if (item.config.query) {
       const m = await getMetric(
@@ -177,8 +185,8 @@ export async function libraryRun(pool: pg.Pool, actor: string, id: string) {
   };
   const query = (ref: string) => {
     const i = get(ref);
-    check(i.kind === "query" && i.config.query, "Invalid query reference.");
-    const key = canonical(i.config.query);
+    check(i.kind === "query" && (i.config.query || i.config.eventFunnel), "Invalid query reference.");
+    const key = canonical(i.config.eventFunnel ?? i.config.query);
     if (!cache.has(key)) {
       check(
         cache.size < 20,
@@ -186,7 +194,14 @@ export async function libraryRun(pool: pg.Pool, actor: string, id: string) {
       );
       cache.set(
         key,
-        runSavedQuery(pool, i.config.query, now).then((r) => metricPlot(r)),
+        i.config.eventFunnel ? (async()=>{
+          const s=i.config.eventFunnel!,bounds=funnelPeriods(s,now),principal={kind:"user" as const,id:actor,name:"Library reader",admin:false};
+          const result=await requestFunnelRun(pool,principal,{...s.query,...bounds.current});
+          const comparison=bounds.comparison?await requestFunnelRun(pool,principal,{...s.query,...bounds.comparison}):undefined;
+          if(result.status!=="completed")throw new FunnelProcessing(result);
+          if(comparison&&comparison.status!=="completed")throw new FunnelProcessing(comparison);
+          return eventFunnelPlot(result,{...s.query,...bounds.current},comparison,bounds.comparison,bounds.timezone);
+        })() : runSavedQuery(pool, i.config.query!, now).then((r) => metricPlot(r)),
       );
     }
     return cache.get(key)!.then((data) => ({ ...data, title: i.name }));
@@ -201,6 +216,7 @@ export async function libraryRun(pool: pg.Pool, actor: string, id: string) {
         for (const ref of i.config.queryIds ?? [])
           sources.push(await query(ref));
         check(sources.length, "Choose query inputs.");
+        if(sources.some(d=>d.measurementKind==="event_funnel"))check(sources.length===1&&i.config.chart?.kind==="funnel","Use one event funnel query in a funnel view. Stage counts cannot be combined or summed.");
         if (sources.length > 1)
           check(
             sources.every(
@@ -245,6 +261,7 @@ export async function libraryRun(pool: pg.Pool, actor: string, id: string) {
         name: i.name,
         chart: i.config.chart ?? { kind: "line" as const },
         error: e instanceof Error ? e.message : "Query failed.",
+        ...(e instanceof FunnelProcessing?{processing:['queued','running','invalidated'].includes(e.result.status),runId:e.result.runId,funnelStatus:e.result.status}:{}),
       };
     }
   };

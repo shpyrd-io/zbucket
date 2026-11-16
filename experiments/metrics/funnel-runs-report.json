@@ -1,0 +1,53 @@
+{
+  "at": "2026-11-15T18:14:15.610Z",
+  "scope": "Isolated local PostgreSQL. Functional API acceptance plus synthetic published index load; no production network or concurrent ingestion benchmark.",
+  "load": {
+    "participants": 150000,
+    "events": 525000,
+    "counts": [
+      {
+        "name": "open",
+        "count": 150000
+      },
+      {
+        "name": "signup",
+        "count": 112500
+      },
+      {
+        "name": "use",
+        "count": 75000
+      },
+      {
+        "name": "export",
+        "count": 37500
+      }
+    ],
+    "workerAndReadMs": 8775,
+    "fixtureAndRunMs": 104594,
+    "cachedReadMs": [
+      62.02,
+      4.61,
+      2.68,
+      2.57,
+      3.16,
+      2.77,
+      3.2,
+      3.48,
+      2.41,
+      2.52
+    ],
+    "rssMiB": 230,
+    "memberRows": "150000"
+  },
+  "checks": [
+    "Exact cross-day sequence, repeated starts, inclusive window, typed filters, batch boundaries, durable queue and concurrent deduplication",
+    "Failed batches are invisible; retry restarts a snapshot without double counting",
+    "Cancellation does not automatically requeue on polling",
+    "Corrections invalidate cached participants immediately; cached reads recheck current grants",
+    "Library reports queue and expose independent comparison-period counts",
+    "Large real index/property query, persistent participants, cached reads and keyset pagination"
+  ],
+  "passed": 6,
+  "completed": true,
+  "cleanedUp": true
+}

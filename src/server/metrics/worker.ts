@@ -1,9 +1,12 @@
+import {backfillDailyEventMetric} from './event-metrics';
+import {publishEventIndex,backfillEventIndex} from './event-storage';
 import { prepareRollupChanges, publishRollups } from './rollups';
 import type pg from 'pg';
 import { transaction } from '@/server/db/metrics';
 // Row locks last through publication; rollback releases work without a stale lease owner.
-export async function processMetricBatch(pool:pg.Pool,batchSize=1000,failBeforeCommit=false){return transaction(pool,async c=>{
- const source=(await c.query('SELECT s.id FROM metric_sources s WHERE EXISTS(SELECT 1 FROM metric_record_keys r WHERE r.source_id=s.id AND NOT r.processed) ORDER BY s.last_processed_at NULLS FIRST,s.id LIMIT 1 FOR UPDATE OF s SKIP LOCKED')).rows[0];if(!source)return 0;
+async function publishMetricBatch(pool:pg.Pool,batchSize=1000,failBeforeCommit=false){return transaction(pool,async c=>{
+ const backfilled=await backfillEventIndex(c,batchSize);
+ const source=(await c.query('SELECT s.id FROM metric_sources s WHERE EXISTS(SELECT 1 FROM metric_record_keys r WHERE r.source_id=s.id AND NOT r.processed) ORDER BY s.last_processed_at NULLS FIRST,s.id LIMIT 1 FOR UPDATE OF s SKIP LOCKED')).rows[0];if(!source)return backfilled;
  await c.query('UPDATE metric_sources SET last_processed_at=clock_timestamp() WHERE id=$1',[source.id]);
  await c.query('CREATE TEMP TABLE metric_batch ON COMMIT DROP AS SELECT * FROM metric_record_keys WHERE NOT processed AND source_id=$2 ORDER BY received_at,record_id LIMIT $1 FOR UPDATE SKIP LOCKED',[batchSize,source.id]);
  await c.query('CREATE INDEX ON metric_batch(source_id,record_id); ANALYZE metric_batch');
@@ -22,6 +25,7 @@ export async function processMetricBatch(pool:pg.Pool,batchSize=1000,failBeforeC
  ) k USING(metric_id,version);
  CREATE UNIQUE INDEX ON metric_batch_definitions(metric_id,version); ANALYZE metric_batch_definitions;`);
  if(hasCorrections)await prepareRollupChanges(c);
+ await publishEventIndex(c);
  if(!hasCorrections){
  await c.query(`CREATE TEMP TABLE metric_new ON COMMIT DROP AS
  SELECT b.source_id,b.record_id,b.revision,(p->>'metricId')::uuid metric_id,(p->>'version')::int version,(p->>'observedAt')::timestamptz observed_at,(p->>'endsAt')::timestamptz ends_at,p->'dimensions' dimensions,(p->>'v')::numeric v,(p->>'n')::numeric n,(p->>'d')::numeric d,(p->>'weight')::numeric weight,p->>'identity' identity,b.received_at
@@ -55,3 +59,10 @@ export async function processMetricBatch(pool:pg.Pool,batchSize=1000,failBeforeC
  await c.query(`UPDATE metric_ingestions i SET status='completed',completed_at=now() WHERE i.id IN(SELECT ingestion_id FROM metric_batch) AND NOT EXISTS(SELECT 1 FROM metric_record_keys r WHERE r.ingestion_id=i.id AND NOT r.processed)`);
  await publishRollups(c);
  if(failBeforeCommit)throw new Error('Injected failure before publication');return count;});}
+
+export async function processMetricBatch(pool:pg.Pool,batchSize=1000,failBeforeCommit=false){
+ const published=await publishMetricBatch(pool,batchSize,failBeforeCommit);
+ let history:number;
+ try{history=await transaction(pool,async c=>{const n=await backfillDailyEventMetric(c,batchSize);if(failBeforeCommit&&n)throw new Error('Injected failure before publication');return n;});}catch(error){const id=(error as {eventMetricId?:string}).eventMetricId;if(id)await pool.query('UPDATE metric_event_processing SET last_error=$2,attempts=attempts+1 WHERE metric_id=$1',[id,error instanceof Error?error.message.slice(0,500):'History processing failed']);throw error;}
+ return published+history;
+}

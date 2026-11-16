@@ -16,7 +16,7 @@ export async function queryMetric(pool:pg.Pool,q:MetricQuery,actor?:string):Prom
 const c=await pool.connect();let released=false;try{await c.query('BEGIN ISOLATION LEVEL REPEATABLE READ');const m=await getMetric(c,q.metricId,q.version);const start=instant(q.startsAt),end=instant(q.endsAt);check(end>start,'End must follow start.');check(Date.parse(end)-Date.parse(start)<=732*86400000,'Interactive queries are limited to 732 days.');const dims=q.dimensions??{};check(Object.keys(dims).every(k=>m.dimensions.includes(k)),'Unknown breakdown filter.');
  if(m.kind==='latest')check(Object.keys(dims).length===m.dimensions.length,'Select a complete dimension scope for a snapshot metric.');
  const times=[m.id,m.version,start,end,JSON.stringify(dims)];
- const pending=await c.query(`SELECT 1 FROM metric_record_keys WHERE NOT processed AND payload->'projections' @> $1::jsonb LIMIT 1`,[JSON.stringify([{metricId:m.id,version:m.version}])]);
+ const pending=await c.query(`SELECT 1 FROM metric_record_keys WHERE NOT processed AND payload->'projections' @> $1::jsonb UNION ALL SELECT 1 FROM metric_event_processing WHERE metric_id=$2 AND status<>'completed' LIMIT 1`,[JSON.stringify([{metricId:m.id,version:m.version}]),m.id]);
  const intervals=m.inputMode==='aggregates'||m.inputMode==='measurements';
  const hourAligned=[start,end].every(s=>Date.parse(s)%3600000===0);
  const zoneHourAligned=new Intl.DateTimeFormat('en',{timeZone:m.timezone,minute:'numeric'}).format(new Date(start))===new Intl.DateTimeFormat('en',{timeZone:'UTC',minute:'numeric'}).format(new Date(start));

@@ -1,0 +1,965 @@
+{
+  "fictional": true,
+  "run": "2026-11-15T04:09:16.152Z",
+  "scope": {
+    "sourceId": "01a1dd65-2a20-72fe-b658-ad1ae49b8386",
+    "datasetKey": "app_demo",
+    "schemaVersion": 1,
+    "startsAt": "2026-11-15T03:09:17.259Z",
+    "endsAt": "2026-11-16T04:09:17.259Z"
+  },
+  "transport": "Real browser SDK → same-origin relay → Warehouse HTTP API → PostgreSQL worker",
+  "statuses": [
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    },
+    {
+      "path": "/analytics/events",
+      "status": 200
+    },
+    {
+      "path": "/analytics/events",
+      "status": 202
+    }
+  ],
+  "eventCount": 25,
+  "funnel": {
+    "steps": [
+      {
+        "name": "app_opened",
+        "count": 10
+      },
+      {
+        "name": "signup_completed",
+        "count": 7
+      },
+      {
+        "name": "feature_used",
+        "count": 5
+      },
+      {
+        "name": "report_exported",
+        "count": 3
+      }
+    ],
+    "participants": [
+      {
+        "id": "anon:1b10e9b6-bf62-4692-affe-87d5db31c90a",
+        "reached": 1
+      },
+      {
+        "id": "anon:9fa6324d-48ef-4320-ae14-5adca6f9d073",
+        "reached": 1
+      },
+      {
+        "id": "anon:cf04e4c2-a606-47a3-be89-d41497a1d34d",
+        "reached": 1
+      },
+      {
+        "id": "user:person-1",
+        "reached": 4
+      },
+      {
+        "id": "user:person-2",
+        "reached": 4
+      },
+      {
+        "id": "user:person-3",
+        "reached": 4
+      },
+      {
+        "id": "user:person-4",
+        "reached": 3
+      },
+      {
+        "id": "user:person-5",
+        "reached": 3
+      },
+      {
+        "id": "user:person-6",
+        "reached": 2
+      },
+      {
+        "id": "user:person-7",
+        "reached": 2
+      }
+    ],
+    "nextCursor": null,
+    "totalParticipants": 10,
+    "unit": "person",
+    "windowSeconds": 86400,
+    "candidateEvents": 25,
+    "recomputing": false,
+    "skippedRecords": 0,
+    "retainedSince": "2026-10-16T04:09:37.505Z"
+  },
+  "personTimeline": {
+    "events": [
+      {
+        "eventId": "web:a4bad318-0434-4d2d-88f3-9a416307985c",
+        "revision": 1,
+        "occurredAt": "2026-11-15T04:09:34.539Z",
+        "receivedAt": "2026-11-15T04:09:34.589Z",
+        "name": "report_exported",
+        "userId": "user:person-1",
+        "originalUserId": "user:person-1",
+        "accountId": "acme-1",
+        "sessionId": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+        "data": {
+          "name": "report_exported",
+          "person": "user:person-1",
+          "account": "acme-1",
+          "session": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+          "properties": {
+            "rows": 120,
+            "format": "csv"
+          }
+        }
+      },
+      {
+        "eventId": "web:f845a673-82cc-4a8a-b5ea-473317fd7025",
+        "revision": 1,
+        "occurredAt": "2026-11-15T04:09:34.490Z",
+        "receivedAt": "2026-11-15T04:09:34.522Z",
+        "name": "feature_used",
+        "userId": "user:person-1",
+        "originalUserId": "user:person-1",
+        "accountId": "acme-1",
+        "sessionId": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+        "data": {
+          "name": "feature_used",
+          "person": "user:person-1",
+          "account": "acme-1",
+          "session": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+          "properties": {
+            "feature": "reports",
+            "first_use": true,
+            "report_type": "revenue"
+          }
+        }
+      },
+      {
+        "eventId": "web:3242fc8f-595b-4ee5-ace1-a33677539317",
+        "revision": 1,
+        "occurredAt": "2026-11-15T04:09:34.333Z",
+        "receivedAt": "2026-11-15T04:09:34.399Z",
+        "name": "signup_completed",
+        "userId": "user:person-1",
+        "originalUserId": "user:person-1",
+        "accountId": "acme-1",
+        "sessionId": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+        "data": {
+          "name": "signup_completed",
+          "person": "user:person-1",
+          "account": "acme-1",
+          "session": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+          "properties": {
+            "plan": "trial",
+            "method": "email"
+          }
+        }
+      },
+      {
+        "eventId": "web:b9a61957-c878-4bee-aece-21e0274b3b57",
+        "revision": 1,
+        "occurredAt": "2026-11-15T04:09:32.912Z",
+        "receivedAt": "2026-11-15T04:09:32.996Z",
+        "name": "app_opened",
+        "userId": "user:person-1",
+        "originalUserId": "anon:bce3a9eb-7a2a-4457-b22b-414f582a2fea",
+        "accountId": null,
+        "sessionId": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+        "data": {
+          "name": "app_opened",
+          "person": "anon:bce3a9eb-7a2a-4457-b22b-414f582a2fea",
+          "account": null,
+          "session": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+          "properties": {
+            "campaign": "product_hunt",
+            "platform": "web",
+            "demo_person": 1
+          }
+        }
+      }
+    ],
+    "nextCursor": null,
+    "recomputing": false,
+    "skippedRecords": 0,
+    "retainedSince": "2026-10-16T04:09:37.404Z"
+  },
+  "accountTimeline": {
+    "events": [
+      {
+        "eventId": "web:a4bad318-0434-4d2d-88f3-9a416307985c",
+        "revision": 1,
+        "occurredAt": "2026-11-15T04:09:34.539Z",
+        "receivedAt": "2026-11-15T04:09:34.589Z",
+        "name": "report_exported",
+        "userId": "user:person-1",
+        "originalUserId": "user:person-1",
+        "accountId": "acme-1",
+        "sessionId": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+        "data": {
+          "name": "report_exported",
+          "person": "user:person-1",
+          "account": "acme-1",
+          "session": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+          "properties": {
+            "rows": 120,
+            "format": "csv"
+          }
+        }
+      },
+      {
+        "eventId": "web:f845a673-82cc-4a8a-b5ea-473317fd7025",
+        "revision": 1,
+        "occurredAt": "2026-11-15T04:09:34.490Z",
+        "receivedAt": "2026-11-15T04:09:34.522Z",
+        "name": "feature_used",
+        "userId": "user:person-1",
+        "originalUserId": "user:person-1",
+        "accountId": "acme-1",
+        "sessionId": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+        "data": {
+          "name": "feature_used",
+          "person": "user:person-1",
+          "account": "acme-1",
+          "session": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+          "properties": {
+            "feature": "reports",
+            "first_use": true,
+            "report_type": "revenue"
+          }
+        }
+      },
+      {
+        "eventId": "web:3242fc8f-595b-4ee5-ace1-a33677539317",
+        "revision": 1,
+        "occurredAt": "2026-11-15T04:09:34.333Z",
+        "receivedAt": "2026-11-15T04:09:34.399Z",
+        "name": "signup_completed",
+        "userId": "user:person-1",
+        "originalUserId": "user:person-1",
+        "accountId": "acme-1",
+        "sessionId": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+        "data": {
+          "name": "signup_completed",
+          "person": "user:person-1",
+          "account": "acme-1",
+          "session": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+          "properties": {
+            "plan": "trial",
+            "method": "email"
+          }
+        }
+      }
+    ],
+    "nextCursor": null,
+    "recomputing": false,
+    "skippedRecords": 0,
+    "retainedSince": "2026-10-16T04:09:37.432Z"
+  },
+  "events": [
+    {
+      "eventId": "web:90c63ecd-1e04-4929-9d04-93267b525a5e",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:36.272Z",
+      "receivedAt": "2026-11-15T04:09:36.288Z",
+      "name": "app_opened",
+      "userId": "anon:cf04e4c2-a606-47a3-be89-d41497a1d34d",
+      "originalUserId": "anon:cf04e4c2-a606-47a3-be89-d41497a1d34d",
+      "accountId": null,
+      "sessionId": "9c428998-971a-4ec3-afa0-34bc2186df72",
+      "data": {
+        "name": "app_opened",
+        "person": "anon:cf04e4c2-a606-47a3-be89-d41497a1d34d",
+        "account": null,
+        "session": "9c428998-971a-4ec3-afa0-34bc2186df72",
+        "properties": {
+          "campaign": "organic",
+          "platform": "web",
+          "demo_person": 10
+        }
+      }
+    },
+    {
+      "eventId": "web:b93075ac-dba0-453e-a3e7-1348f5694685",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:36.237Z",
+      "receivedAt": "2026-11-15T04:09:36.255Z",
+      "name": "app_opened",
+      "userId": "anon:1b10e9b6-bf62-4692-affe-87d5db31c90a",
+      "originalUserId": "anon:1b10e9b6-bf62-4692-affe-87d5db31c90a",
+      "accountId": null,
+      "sessionId": "320c1cac-9a01-48d9-8a57-f86efe6d71e3",
+      "data": {
+        "name": "app_opened",
+        "person": "anon:1b10e9b6-bf62-4692-affe-87d5db31c90a",
+        "account": null,
+        "session": "320c1cac-9a01-48d9-8a57-f86efe6d71e3",
+        "properties": {
+          "campaign": "product_hunt",
+          "platform": "web",
+          "demo_person": 9
+        }
+      }
+    },
+    {
+      "eventId": "web:adb91924-3198-4cc8-9269-b43c54a26f45",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:36.193Z",
+      "receivedAt": "2026-11-15T04:09:36.218Z",
+      "name": "app_opened",
+      "userId": "anon:9fa6324d-48ef-4320-ae14-5adca6f9d073",
+      "originalUserId": "anon:9fa6324d-48ef-4320-ae14-5adca6f9d073",
+      "accountId": null,
+      "sessionId": "6b183ff6-f7c1-4cb6-925d-7bf36d0fb967",
+      "data": {
+        "name": "app_opened",
+        "person": "anon:9fa6324d-48ef-4320-ae14-5adca6f9d073",
+        "account": null,
+        "session": "6b183ff6-f7c1-4cb6-925d-7bf36d0fb967",
+        "properties": {
+          "campaign": "organic",
+          "platform": "web",
+          "demo_person": 8
+        }
+      }
+    },
+    {
+      "eventId": "web:79239ed1-3462-407e-9cee-509aa35fcf05",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:36.052Z",
+      "receivedAt": "2026-11-15T04:09:36.160Z",
+      "name": "signup_completed",
+      "userId": "user:person-7",
+      "originalUserId": "user:person-7",
+      "accountId": "acme-7",
+      "sessionId": "85e2e5c5-42d2-4551-9093-c6eeae173a7c",
+      "data": {
+        "name": "signup_completed",
+        "person": "user:person-7",
+        "account": "acme-7",
+        "session": "85e2e5c5-42d2-4551-9093-c6eeae173a7c",
+        "properties": {
+          "plan": "trial",
+          "method": "email"
+        }
+      }
+    },
+    {
+      "eventId": "web:2cca8be9-c209-4164-8ed7-53c5eea7d967",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:35.548Z",
+      "receivedAt": "2026-11-15T04:09:35.656Z",
+      "name": "app_opened",
+      "userId": "user:person-7",
+      "originalUserId": "anon:0acf5c1a-d34f-4956-bbba-592bb37007d4",
+      "accountId": null,
+      "sessionId": "85e2e5c5-42d2-4551-9093-c6eeae173a7c",
+      "data": {
+        "name": "app_opened",
+        "person": "anon:0acf5c1a-d34f-4956-bbba-592bb37007d4",
+        "account": null,
+        "session": "85e2e5c5-42d2-4551-9093-c6eeae173a7c",
+        "properties": {
+          "campaign": "product_hunt",
+          "platform": "web",
+          "demo_person": 7
+        }
+      }
+    },
+    {
+      "eventId": "web:8d860be5-2f4b-4d38-bc09-87ac9daf027c",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:35.502Z",
+      "receivedAt": "2026-11-15T04:09:35.519Z",
+      "name": "signup_completed",
+      "userId": "user:person-6",
+      "originalUserId": "user:person-6",
+      "accountId": "acme-6",
+      "sessionId": "6d58e2a6-d004-4833-8ff0-c2e340f288e9",
+      "data": {
+        "name": "signup_completed",
+        "person": "user:person-6",
+        "account": "acme-6",
+        "session": "6d58e2a6-d004-4833-8ff0-c2e340f288e9",
+        "properties": {
+          "plan": "trial",
+          "method": "google"
+        }
+      }
+    },
+    {
+      "eventId": "web:dc4df9c3-9251-439d-8e2e-9f5e770a3fb3",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:35.438Z",
+      "receivedAt": "2026-11-15T04:09:35.462Z",
+      "name": "app_opened",
+      "userId": "user:person-6",
+      "originalUserId": "anon:2a9a96d4-c03b-4d2a-8e0e-bd0a7e1b28ea",
+      "accountId": null,
+      "sessionId": "6d58e2a6-d004-4833-8ff0-c2e340f288e9",
+      "data": {
+        "name": "app_opened",
+        "person": "anon:2a9a96d4-c03b-4d2a-8e0e-bd0a7e1b28ea",
+        "account": null,
+        "session": "6d58e2a6-d004-4833-8ff0-c2e340f288e9",
+        "properties": {
+          "campaign": "organic",
+          "platform": "web",
+          "demo_person": 6
+        }
+      }
+    },
+    {
+      "eventId": "web:0a5f6efd-c6ea-430c-9433-96b2666e1176",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:35.416Z",
+      "receivedAt": "2026-11-15T04:09:35.425Z",
+      "name": "feature_used",
+      "userId": "user:person-5",
+      "originalUserId": "user:person-5",
+      "accountId": "acme-5",
+      "sessionId": "d7fdc3b0-573e-4056-9926-13c1f733631b",
+      "data": {
+        "name": "feature_used",
+        "person": "user:person-5",
+        "account": "acme-5",
+        "session": "d7fdc3b0-573e-4056-9926-13c1f733631b",
+        "properties": {
+          "feature": "reports",
+          "first_use": true,
+          "report_type": "revenue"
+        }
+      }
+    },
+    {
+      "eventId": "web:47cf506f-0d5c-4f48-8dfe-5527cc955ae1",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:35.400Z",
+      "receivedAt": "2026-11-15T04:09:35.408Z",
+      "name": "signup_completed",
+      "userId": "user:person-5",
+      "originalUserId": "user:person-5",
+      "accountId": "acme-5",
+      "sessionId": "d7fdc3b0-573e-4056-9926-13c1f733631b",
+      "data": {
+        "name": "signup_completed",
+        "person": "user:person-5",
+        "account": "acme-5",
+        "session": "d7fdc3b0-573e-4056-9926-13c1f733631b",
+        "properties": {
+          "plan": "trial",
+          "method": "email"
+        }
+      }
+    },
+    {
+      "eventId": "web:157e7469-779e-4c13-9334-2c6a1f5929bf",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:35.356Z",
+      "receivedAt": "2026-11-15T04:09:35.372Z",
+      "name": "app_opened",
+      "userId": "user:person-5",
+      "originalUserId": "anon:7ec350bf-084f-4d10-afce-a267ed1228f0",
+      "accountId": null,
+      "sessionId": "d7fdc3b0-573e-4056-9926-13c1f733631b",
+      "data": {
+        "name": "app_opened",
+        "person": "anon:7ec350bf-084f-4d10-afce-a267ed1228f0",
+        "account": null,
+        "session": "d7fdc3b0-573e-4056-9926-13c1f733631b",
+        "properties": {
+          "campaign": "product_hunt",
+          "platform": "web",
+          "demo_person": 5
+        }
+      }
+    },
+    {
+      "eventId": "web:1a54bda9-4a3b-4c43-aa68-cc463bcc7cb3",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:35.303Z",
+      "receivedAt": "2026-11-15T04:09:35.324Z",
+      "name": "feature_used",
+      "userId": "user:person-4",
+      "originalUserId": "user:person-4",
+      "accountId": "acme-4",
+      "sessionId": "deac1f35-b2b3-45c1-b31d-dab0e0e51229",
+      "data": {
+        "name": "feature_used",
+        "person": "user:person-4",
+        "account": "acme-4",
+        "session": "deac1f35-b2b3-45c1-b31d-dab0e0e51229",
+        "properties": {
+          "feature": "reports",
+          "first_use": true,
+          "report_type": "revenue"
+        }
+      }
+    },
+    {
+      "eventId": "web:9a819b59-8642-4d56-9759-b00c37562fea",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:35.224Z",
+      "receivedAt": "2026-11-15T04:09:35.258Z",
+      "name": "signup_completed",
+      "userId": "user:person-4",
+      "originalUserId": "user:person-4",
+      "accountId": "acme-4",
+      "sessionId": "deac1f35-b2b3-45c1-b31d-dab0e0e51229",
+      "data": {
+        "name": "signup_completed",
+        "person": "user:person-4",
+        "account": "acme-4",
+        "session": "deac1f35-b2b3-45c1-b31d-dab0e0e51229",
+        "properties": {
+          "plan": "trial",
+          "method": "google"
+        }
+      }
+    },
+    {
+      "eventId": "web:e4d23f18-2b1a-4064-8102-7407a1f5b5a7",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:35.180Z",
+      "receivedAt": "2026-11-15T04:09:35.193Z",
+      "name": "app_opened",
+      "userId": "user:person-4",
+      "originalUserId": "anon:b0072d53-4147-4bfd-ae3a-7074da912a08",
+      "accountId": null,
+      "sessionId": "deac1f35-b2b3-45c1-b31d-dab0e0e51229",
+      "data": {
+        "name": "app_opened",
+        "person": "anon:b0072d53-4147-4bfd-ae3a-7074da912a08",
+        "account": null,
+        "session": "deac1f35-b2b3-45c1-b31d-dab0e0e51229",
+        "properties": {
+          "campaign": "organic",
+          "platform": "web",
+          "demo_person": 4
+        }
+      }
+    },
+    {
+      "eventId": "web:19d8e9e5-9c88-42b2-9831-362f25d5c805",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:35.152Z",
+      "receivedAt": "2026-11-15T04:09:35.166Z",
+      "name": "report_exported",
+      "userId": "user:person-3",
+      "originalUserId": "user:person-3",
+      "accountId": "acme-3",
+      "sessionId": "c445b391-d5da-48d1-b063-b7db4aec67b2",
+      "data": {
+        "name": "report_exported",
+        "person": "user:person-3",
+        "account": "acme-3",
+        "session": "c445b391-d5da-48d1-b063-b7db4aec67b2",
+        "properties": {
+          "rows": 360,
+          "format": "csv"
+        }
+      }
+    },
+    {
+      "eventId": "web:797f34f8-dbdf-4448-8b68-ba35a2ddbd24",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:35.108Z",
+      "receivedAt": "2026-11-15T04:09:35.123Z",
+      "name": "feature_used",
+      "userId": "user:person-3",
+      "originalUserId": "user:person-3",
+      "accountId": "acme-3",
+      "sessionId": "c445b391-d5da-48d1-b063-b7db4aec67b2",
+      "data": {
+        "name": "feature_used",
+        "person": "user:person-3",
+        "account": "acme-3",
+        "session": "c445b391-d5da-48d1-b063-b7db4aec67b2",
+        "properties": {
+          "feature": "reports",
+          "first_use": true,
+          "report_type": "revenue"
+        }
+      }
+    },
+    {
+      "eventId": "web:e9adefb0-7e12-4745-822d-5e01f07884eb",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:35.072Z",
+      "receivedAt": "2026-11-15T04:09:35.095Z",
+      "name": "signup_completed",
+      "userId": "user:person-3",
+      "originalUserId": "user:person-3",
+      "accountId": "acme-3",
+      "sessionId": "c445b391-d5da-48d1-b063-b7db4aec67b2",
+      "data": {
+        "name": "signup_completed",
+        "person": "user:person-3",
+        "account": "acme-3",
+        "session": "c445b391-d5da-48d1-b063-b7db4aec67b2",
+        "properties": {
+          "plan": "trial",
+          "method": "email"
+        }
+      }
+    },
+    {
+      "eventId": "web:6ae9dfab-9894-48b7-b403-ac0c7810308a",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:35.028Z",
+      "receivedAt": "2026-11-15T04:09:35.043Z",
+      "name": "app_opened",
+      "userId": "user:person-3",
+      "originalUserId": "anon:2578ed63-50be-418b-9dea-bdb6c0a433ee",
+      "accountId": null,
+      "sessionId": "c445b391-d5da-48d1-b063-b7db4aec67b2",
+      "data": {
+        "name": "app_opened",
+        "person": "anon:2578ed63-50be-418b-9dea-bdb6c0a433ee",
+        "account": null,
+        "session": "c445b391-d5da-48d1-b063-b7db4aec67b2",
+        "properties": {
+          "campaign": "product_hunt",
+          "platform": "web",
+          "demo_person": 3
+        }
+      }
+    },
+    {
+      "eventId": "web:725ea097-1b92-46cc-863f-0ac779338fc8",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:34.995Z",
+      "receivedAt": "2026-11-15T04:09:35.009Z",
+      "name": "report_exported",
+      "userId": "user:person-2",
+      "originalUserId": "user:person-2",
+      "accountId": "acme-2",
+      "sessionId": "ee068204-791c-4ec1-bd08-f251d14e7bfc",
+      "data": {
+        "name": "report_exported",
+        "person": "user:person-2",
+        "account": "acme-2",
+        "session": "ee068204-791c-4ec1-bd08-f251d14e7bfc",
+        "properties": {
+          "rows": 240,
+          "format": "csv"
+        }
+      }
+    },
+    {
+      "eventId": "web:00e3179d-2451-4237-b26d-f90280eb7009",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:34.969Z",
+      "receivedAt": "2026-11-15T04:09:34.987Z",
+      "name": "feature_used",
+      "userId": "user:person-2",
+      "originalUserId": "user:person-2",
+      "accountId": "acme-2",
+      "sessionId": "ee068204-791c-4ec1-bd08-f251d14e7bfc",
+      "data": {
+        "name": "feature_used",
+        "person": "user:person-2",
+        "account": "acme-2",
+        "session": "ee068204-791c-4ec1-bd08-f251d14e7bfc",
+        "properties": {
+          "feature": "reports",
+          "first_use": true,
+          "report_type": "revenue"
+        }
+      }
+    },
+    {
+      "eventId": "web:eb07beb6-2b8d-4479-9c94-8d769931dd2c",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:34.911Z",
+      "receivedAt": "2026-11-15T04:09:34.945Z",
+      "name": "signup_completed",
+      "userId": "user:person-2",
+      "originalUserId": "user:person-2",
+      "accountId": "acme-2",
+      "sessionId": "ee068204-791c-4ec1-bd08-f251d14e7bfc",
+      "data": {
+        "name": "signup_completed",
+        "person": "user:person-2",
+        "account": "acme-2",
+        "session": "ee068204-791c-4ec1-bd08-f251d14e7bfc",
+        "properties": {
+          "plan": "trial",
+          "method": "google"
+        }
+      }
+    },
+    {
+      "eventId": "web:74f8a609-ee53-423a-ae51-5cc411c9b4a9",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:34.748Z",
+      "receivedAt": "2026-11-15T04:09:34.817Z",
+      "name": "app_opened",
+      "userId": "user:person-2",
+      "originalUserId": "anon:b04aaaef-0e62-4b06-ba96-704b878bbdc9",
+      "accountId": null,
+      "sessionId": "ee068204-791c-4ec1-bd08-f251d14e7bfc",
+      "data": {
+        "name": "app_opened",
+        "person": "anon:b04aaaef-0e62-4b06-ba96-704b878bbdc9",
+        "account": null,
+        "session": "ee068204-791c-4ec1-bd08-f251d14e7bfc",
+        "properties": {
+          "campaign": "organic",
+          "platform": "web",
+          "demo_person": 2
+        }
+      }
+    },
+    {
+      "eventId": "web:a4bad318-0434-4d2d-88f3-9a416307985c",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:34.539Z",
+      "receivedAt": "2026-11-15T04:09:34.589Z",
+      "name": "report_exported",
+      "userId": "user:person-1",
+      "originalUserId": "user:person-1",
+      "accountId": "acme-1",
+      "sessionId": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+      "data": {
+        "name": "report_exported",
+        "person": "user:person-1",
+        "account": "acme-1",
+        "session": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+        "properties": {
+          "rows": 120,
+          "format": "csv"
+        }
+      }
+    },
+    {
+      "eventId": "web:f845a673-82cc-4a8a-b5ea-473317fd7025",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:34.490Z",
+      "receivedAt": "2026-11-15T04:09:34.522Z",
+      "name": "feature_used",
+      "userId": "user:person-1",
+      "originalUserId": "user:person-1",
+      "accountId": "acme-1",
+      "sessionId": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+      "data": {
+        "name": "feature_used",
+        "person": "user:person-1",
+        "account": "acme-1",
+        "session": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+        "properties": {
+          "feature": "reports",
+          "first_use": true,
+          "report_type": "revenue"
+        }
+      }
+    },
+    {
+      "eventId": "web:3242fc8f-595b-4ee5-ace1-a33677539317",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:34.333Z",
+      "receivedAt": "2026-11-15T04:09:34.399Z",
+      "name": "signup_completed",
+      "userId": "user:person-1",
+      "originalUserId": "user:person-1",
+      "accountId": "acme-1",
+      "sessionId": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+      "data": {
+        "name": "signup_completed",
+        "person": "user:person-1",
+        "account": "acme-1",
+        "session": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+        "properties": {
+          "plan": "trial",
+          "method": "email"
+        }
+      }
+    },
+    {
+      "eventId": "web:b9a61957-c878-4bee-aece-21e0274b3b57",
+      "revision": 1,
+      "occurredAt": "2026-11-15T04:09:32.912Z",
+      "receivedAt": "2026-11-15T04:09:32.996Z",
+      "name": "app_opened",
+      "userId": "user:person-1",
+      "originalUserId": "anon:bce3a9eb-7a2a-4457-b22b-414f582a2fea",
+      "accountId": null,
+      "sessionId": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+      "data": {
+        "name": "app_opened",
+        "person": "anon:bce3a9eb-7a2a-4457-b22b-414f582a2fea",
+        "account": null,
+        "session": "f33f3a9f-6ee2-457d-8888-063a3ffb7286",
+        "properties": {
+          "campaign": "product_hunt",
+          "platform": "web",
+          "demo_person": 1
+        }
+      }
+    }
+  ]
+}

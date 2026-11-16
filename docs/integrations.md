@@ -54,7 +54,8 @@ An administrator opens **Integrations → New integration**:
 3. Grant Knowledge collection keys for **read** and **publish**. Create each collection first. A collection is the document authorization boundary; category, tags and source type are descriptive metadata.
 4. Enable optional capabilities: Knowledge search, history and archive; metric snapshots. Enable **Create and manage own metrics** only for applications allowed to auto-publish their metric definitions. This is `metrics.manageOwn`; it defaults to `false`, including for existing integrations.
 5. If necessary, restrict a metric to exact dimension values, such as `account_id: "account-001"`. Reads automatically include that scope; writes must explicitly match it. Multiple fields use AND.
-6. Save and select **Issue credential**. The full `wh_…` secret is displayed once. Store it immediately. The UI issues a 90-day token; administrative issuance supports 1–365 days.
+6. For behavior exploration, grant explicit **Read own event datasets** and **Publish own event datasets** (`metrics.eventRead` / `metrics.eventWrite`). These lists default to empty and cover the entire named dataset on this integration; metric dimension restrictions do not narrow event access. See the Metrics guide for enabling mappings and timeline/funnel queries.
+7. Save and select **Issue credential**. The full `wh_…` secret is displayed once. Store it immediately. The UI issues a 90-day token; administrative issuance supports 1–365 days.
 
 One integration owns one metric source used for provenance. There is no separate producer credential. When defining a metric, select that integration as its publisher. A write grant cannot publish to a metric assigned to another integration. Another app can receive read access to the same metric.
 
@@ -103,7 +104,7 @@ Token requests check the integration's current permissions, active state, token 
 - Metrics publishing returns **202 Accepted** plus a receipt. Poll the receipt until completed before expecting the aggregate to include it.
 - Document writes return **200** with the current document/revision. Text search is available immediately; semantic indexing runs asynchronously.
 - The body limit is **5 MiB**. Metrics additionally limit batches to **1,000 records** and event fan-out to **100,000 projections**.
-- The rate limit is **240 authenticated requests per minute per integration**, shared by its credentials and by reads/writes. On 429, respect `Retry-After` and add backoff/jitter.
+- General operations share **240 authenticated requests per minute per integration**. `POST /api/v1/metrics/events` and `POST /api/v1/metrics/event-identify` share a separate budget of **2,400 requests and 240,000 submitted events per minute**, shared across credentials and replicas. Retries count toward both budgets. Event publishing and identity linking do not consume the general request quota. Body, batch and source-backlog limits still apply. On 429, respect `Retry-After` and add backoff/jitter.
 - Preserve record IDs for metric retries. Preserve `(collection, key)` and current revision for documents. A new ID is new data, not a retry.
 - Errors from the Warehouse application are JSON: `{"error":"message"}`. A gateway can return a different response before the request reaches Warehouse.
 

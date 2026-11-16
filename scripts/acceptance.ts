@@ -7,6 +7,9 @@ const url=new URL(process.env.DATABASE_URL!),schema='warehouse_test_'+Date.now()
 await root.query(`CREATE SCHEMA ${schema}`);url.searchParams.set('options',`-c search_path=${schema},public`);process.env.DATABASE_URL=url.toString();process.env.WAREHOUSE_ACCESS='local';
 const {GET,POST}=await import('../app/api/v1/[...operation]/route');const {database}=await import('../src/server/database');const {processMetricBatch}=await import('../src/server/metrics/worker');const {indexOne}=await import('../src/server/knowledge');
 const checks:string[]=[];
+// Keep functional fixtures inside the configured 30-day reporting retention.
+const fixtureDay=new Date();fixtureDay.setUTCHours(0,0,0,0);fixtureDay.setUTCDate(fixtureDay.getUTCDate()-3);
+const fixtureAt=(hours:number)=>new Date(+fixtureDay+hours*3600000).toISOString();
 async function call(path:string,body?:unknown,token?:string,status=200){const headers:Record<string,string>={};if(token)headers.Authorization='Bearer '+token;if(body)headers['Content-Type']='application/json';const r=await(body?POST:GET)(new Request('http://localhost/api/v1/'+path,{method:body?'POST':'GET',headers,body:body?JSON.stringify(body):undefined}),{params:Promise.resolve({operation:path.split('?')[0].split('/')})});const value=await r.json();assert.equal(r.status,status,`${path}: ${JSON.stringify(value)}`);return value;}
 const deny={metrics:{read:[],write:[],dimensions:{},snapshots:false},knowledge:{readCollections:[],writeCollections:[],search:false,history:false,archive:false}};
 try{
@@ -19,11 +22,11 @@ try{
  assert.equal((await pool.query('SELECT count(*) n FROM warehouse_credentials')).rows[0].n,'1');
  await call('metrics/sources',undefined,token,403);
  const metric=await call('metrics/definitions',{definition:{key:'cash_balance_brl',name:'Cash balance',kind:'latest',unit:'BRL',sourceId:app.source_id,inputMode:'measurements',dimensions:['account_id'],status:'active',timezone:'UTC',missingData:'keep_previous',storagePolicy:{baseResolution:'hour',baseRetentionDays:30,hourRetentionDays:30,dayRetentionDays:730,rawRetentionDays:null}}});
- const measurement=(id:string,account:string,value:string)=>({measurementId:id,metricKey:metric.key,observedAt:'2026-10-08T10:00:00Z',value,unit:'BRL',dimensions:{account_id:account}});
+ const measurement=(id:string,account:string,value:string)=>({measurementId:id,metricKey:metric.key,observedAt:fixtureAt(10),value,unit:'BRL',dimensions:{account_id:account}});
  const receipt=await call('metrics/measurements',{measurements:[measurement('one','one','125000.50'),measurement('two','two','74999.50')]},token,202);assert.equal(receipt.accepted,2);
  assert.equal((await call('metrics/measurements',{measurements:[measurement('one','one','125000.50')]},token,202)).duplicates,1);
  await processMetricBatch(pool);assert.equal((await call('metrics/ingestions/'+receipt.id,undefined,token)).status,'completed');
- const q={metricId:metric.key,startsAt:'2026-10-08T00:00:00Z',endsAt:'2026-10-09T00:00:00Z',interval:'hour',aggregation:'sum'};
+ const q={metricId:metric.key,startsAt:fixtureAt(0),endsAt:fixtureAt(24),interval:'hour',aggregation:'sum'};
  assert.equal(Number((await call('metrics/query',q,token)).value),200000);
  for(const credential of [undefined,token]){
   await call('metrics/exports',q,credential,404);
@@ -80,7 +83,7 @@ try{
  const eventSource=(await call('integrations')).apps.find((a:{id:string})=>a.id===eventApp.id).source_id;
  await call('metrics/datasets',{sourceId:eventSource,key:'orders',schema:{value:'decimal'}});
  for(const [i,key] of eventKeys.entries())await call('metrics/definitions',{definition:{key,name:key,kind:i?'max':'sum',sourceId:eventSource,inputMode:'events',datasetKey:'orders',unit:'BRL',dimensions:[],timezone:'UTC',status:'active',storagePolicy:{baseResolution:'hour',baseRetentionDays:30,hourRetentionDays:30,dayRetentionDays:730,rawRetentionDays:null}}});
- const eventBody={datasetKey:'orders',schemaVersion:1,events:[{eventId:'order-1',occurredAt:'2026-10-08T10:00:00Z',data:{value:'99.90'}}]};
+ const eventBody={datasetKey:'orders',schemaVersion:1,events:[{eventId:'order-1',occurredAt:fixtureAt(10),data:{value:'99.90'}}]};
  await call('metrics/events',eventBody,eventToken,404);
  assert.equal((await pool.query('SELECT count(*) n FROM metric_ingestions WHERE source_id=$1',[eventSource])).rows[0].n,'0');
  await call('integrations',{action:'update',id:eventApp.id,revision:1,name:'Event publisher',permissions:{...eventGrants,metrics:{...eventGrants.metrics,write:eventKeys}}});

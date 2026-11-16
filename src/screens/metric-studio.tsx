@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import {post} from "@/api/warehouse";
+import {EventFunnelControls} from "@/components/event-funnel-controls";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
@@ -56,7 +58,7 @@ export function MetricStudio({ viewerId }: { viewerId: string }) {
         kind === "view"
           ? {
               queryIds: selected?.kind === "query" ? [selected.id] : [],
-              chart: { kind: "line" },
+              chart: selected?.config.eventFunnel ? {kind:"funnel",stageTotals:true,orientation:"horizontal"} : { kind: "line" },
             }
           : {
               viewIds: selected?.kind === "view" ? [selected.id] : [],
@@ -225,6 +227,7 @@ export function MetricStudio({ viewerId }: { viewerId: string }) {
                   }
                 />
               )}
+              {draft.kind === "query" && draft.config?.eventFunnel && <EventFunnelControls value={draft.config.eventFunnel} onChange={eventFunnel=>change({config:{...draft.config,eventFunnel}})}/>}
               {draft.kind !== "query" && (
                 <>
                   <p className="text-sm">
@@ -256,6 +259,7 @@ export function MetricStudio({ viewerId }: { viewerId: string }) {
                                 change({
                                   config: {
                                     ...draft.config,
+                                    ...(draft.kind==="view"&&e.target.checked&&i.config.eventFunnel?{chart:{kind:"funnel" as const,stageTotals:true,orientation:"horizontal" as const}}:{}),
                                     [key]: e.target.checked
                                       ? [...refs, i.id]
                                       : refs.filter((id) => id !== i.id),
@@ -440,7 +444,7 @@ export function MetricStudio({ viewerId }: { viewerId: string }) {
                         ) : (
                           <div className="metric-chart">
                             <strong>{p.name}</strong>
-                            <p role="alert">{p.error}</p>
+                            <p role={p.processing?"status":"alert"}>{p.error}</p>{p.runId&&!p.processing&&<Button variant="outline" onClick={async()=>{try{await post("metrics/event-funnel-runs/"+p.runId,{action:"retry"});await run.refetch();}catch(e){setError(e instanceof Error?e.message:"Unable to retry.");}}}>Retry funnel</Button>}
                           </div>
                         )}
                       </section>

@@ -1,0 +1,232 @@
+{
+  "at": "2026-11-15T01:03:37.203Z",
+  "scope": "Synthetic isolated local PostgreSQL schema; real loopback HTTP to route handlers, not a Next.js server, real browser or production network",
+  "environment": {
+    "node": "v24.16.0",
+    "platform": "darwin",
+    "cpu": "Apple M2",
+    "logicalCpus": 8,
+    "ramGiB": 24
+  },
+  "phases": [
+    {
+      "label": "event-only-20k",
+      "events": 20000,
+      "accepted": 20000,
+      "concurrency": 1,
+      "batchSize": 1000,
+      "errors": 0,
+      "ingestMs": 6250,
+      "acceptedEventsPerSecond": 3200,
+      "ingestAndDrainMs": 6610,
+      "drainMs": 360,
+      "maxSampledBacklog": 1000,
+      "request": {
+        "samples": 20,
+        "p50Ms": 236.96,
+        "p95Ms": 604,
+        "p99Ms": 627.7,
+        "maxMs": 627.7
+      },
+      "timelineDuringWrites": {
+        "samples": 32,
+        "p50Ms": 5.5,
+        "p95Ms": 34.26,
+        "p99Ms": 44.43,
+        "maxMs": 44.43
+      }
+    },
+    {
+      "label": "event-only-30k",
+      "events": 30000,
+      "accepted": 30000,
+      "concurrency": 4,
+      "batchSize": 1000,
+      "errors": 0,
+      "ingestMs": 5073,
+      "acceptedEventsPerSecond": 5913,
+      "ingestAndDrainMs": 7694,
+      "drainMs": 2621,
+      "maxSampledBacklog": 13000,
+      "request": {
+        "samples": 30,
+        "p50Ms": 636.51,
+        "p95Ms": 897.55,
+        "p99Ms": 900.64,
+        "maxMs": 900.64
+      },
+      "timelineDuringWrites": {
+        "samples": 28,
+        "p50Ms": 5.06,
+        "p95Ms": 15.52,
+        "p99Ms": 37.74,
+        "maxMs": 37.74
+      }
+    },
+    {
+      "label": "event-only-50k",
+      "events": 50000,
+      "accepted": 50000,
+      "concurrency": 8,
+      "batchSize": 1000,
+      "errors": 0,
+      "ingestMs": 11525,
+      "acceptedEventsPerSecond": 4338,
+      "ingestAndDrainMs": 15572,
+      "drainMs": 4047,
+      "maxSampledBacklog": 20000,
+      "request": {
+        "samples": 50,
+        "p50Ms": 1715.93,
+        "p95Ms": 3081.24,
+        "p99Ms": 3182.2,
+        "maxMs": 3182.2
+      },
+      "timelineDuringWrites": {
+        "samples": 29,
+        "p50Ms": 4.08,
+        "p95Ms": 833.94,
+        "p99Ms": 1081.06,
+        "maxMs": 1081.06
+      }
+    },
+    {
+      "label": "events-and-count-metric-20k",
+      "events": 20000,
+      "accepted": 20000,
+      "concurrency": 4,
+      "batchSize": 1000,
+      "errors": 0,
+      "ingestMs": 5803,
+      "acceptedEventsPerSecond": 3447,
+      "ingestAndDrainMs": 6571,
+      "drainMs": 768,
+      "maxSampledBacklog": 3000,
+      "request": {
+        "samples": 20,
+        "p50Ms": 1134.58,
+        "p95Ms": 1526.4,
+        "p99Ms": 1684.28,
+        "maxMs": 1684.28
+      },
+      "timelineDuringWrites": {
+        "samples": 15,
+        "p50Ms": 62.59,
+        "p95Ms": 446.54,
+        "p99Ms": 446.54,
+        "maxMs": 446.54
+      }
+    }
+  ],
+  "workerErrors": [],
+  "database": {
+    "version": "PostgreSQL 18.3 (Homebrew) on aarch64-apple-darwin23.6.0, compiled by Apple clang version 16.0.0 (clang-1600.0.26.6), 64-bit",
+    "shared_buffers": "128MB",
+    "max_connections": "100"
+  },
+  "retryDeduplicated": 1000,
+  "queries": {
+    "accountTimeline": {
+      "samples": 25,
+      "p50Ms": 2.08,
+      "p95Ms": 3.48,
+      "p99Ms": 6.12,
+      "maxMs": 6.12,
+      "rows": 30
+    },
+    "personTimeline": {
+      "samples": 25,
+      "p50Ms": 22,
+      "p95Ms": 60.83,
+      "p99Ms": 131.05,
+      "maxMs": 131.05,
+      "rows": 3
+    },
+    "funnel15k": {
+      "samples": 25,
+      "p50Ms": 160.62,
+      "p95Ms": 221.11,
+      "p99Ms": 244.96,
+      "maxMs": 244.96,
+      "counts": [
+        5000,
+        5000,
+        5000
+      ]
+    },
+    "funnel100k": {
+      "status": 422,
+      "elapsedMs": 451,
+      "body": {
+        "error": "Funnel exceeds 50,000 candidate events. Choose a shorter period."
+      }
+    }
+  },
+  "browserRelay": {
+    "offeredEvents": 6000,
+    "requests": 300,
+    "concurrency": 4,
+    "batchSize": 20,
+    "elapsedMs": 4585,
+    "statuses": {
+      "202": 240,
+      "503": 60
+    },
+    "request": {
+      "samples": 300,
+      "p50Ms": 62.02,
+      "p95Ms": 124.07,
+      "p99Ms": 167.54,
+      "maxMs": 183.45
+    },
+    "upstreamStatuses": [
+      {
+        "status": 202,
+        "n": 240
+      }
+    ],
+    "storedEvents": 4800,
+    "admission": "Relay allowRequest=true to isolate the existing Warehouse integration quota; no simulated browser retries"
+  },
+  "storage": [
+    {
+      "relname": "metric_record_keys",
+      "bytes": "226615296"
+    },
+    {
+      "relname": "metric_event_index",
+      "bytes": "94289920"
+    },
+    {
+      "relname": "metric_facts_default",
+      "bytes": "8699904"
+    },
+    {
+      "relname": "metric_ingestions",
+      "bytes": "245760"
+    },
+    {
+      "relname": "warehouse_audit",
+      "bytes": "122880"
+    },
+    {
+      "relname": "warehouse_apps",
+      "bytes": "65536"
+    },
+    {
+      "relname": "metrics",
+      "bytes": "49152"
+    },
+    {
+      "relname": "warehouse_users",
+      "bytes": "49152"
+    }
+  ],
+  "pending": 0,
+  "processRssMiB": {
+    "start": 99,
+    "peak": 301
+  },
+  "completed": true,
+  "cleanedUp": true
+}

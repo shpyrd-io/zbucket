@@ -19,7 +19,7 @@ export function registration(input:unknown,sourceId:string) {
     const d=object(body.dataset);onlyFields(d,['version','schema']);
     const version=d.version??1,schema=object(d.schema);
     check(Number.isSafeInteger(version)&&Number(version)>0&&Number(version)<=2147483647,'Dataset version must be a positive integer.');
-    check(Object.keys(schema).length>0&&Object.keys(schema).length<=50&&Object.entries(schema).every(([key,type])=>/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/.test(key)&&typeof type==='string'&&['string','decimal','datetime'].includes(type)),'Use 1–50 declared dataset fields with string, decimal or datetime types.');
+    check(Object.keys(schema).length>0&&Object.keys(schema).length<=50&&Object.entries(schema).every(([key,type])=>/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/.test(key)&&typeof type==='string'&&['string','string?','properties','decimal','datetime'].includes(type)),'Use 1–50 declared dataset fields with string, decimal or datetime types.');
     dataset={version:Number(version),schema};validateDataset(config,schema);
   }
   return {definition:config,...(dataset?{dataset}:{})};

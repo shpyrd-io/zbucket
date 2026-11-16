@@ -268,6 +268,14 @@ class Metrics:
                 raise TimeoutError(f"Ingestion {ingestion_id} is still pending; poll the same receipt later.")
             time.sleep(min(poll_interval, remaining))
 
+    def event_timeline(self, query: Mapping[str, Any]) -> dict[str, Any]:
+        """Read retained event history with explicit dataset permission."""
+        return self._client._request("POST", "metrics/event-timeline", query, retry_safe=True)
+
+    def event_funnel(self, query: Mapping[str, Any]) -> dict[str, Any]:
+        """Evaluate an ordered funnel by person or account."""
+        return self._client._request("POST", "metrics/event-funnel", query, retry_safe=True)
+
     def query(self, query: Mapping[str, Any]) -> dict[str, Any]:
         return self._client._request("POST", "metrics/query", query, retry_safe=not query.get("snapshot"))
 

@@ -1,0 +1,13 @@
+import {fileURLToPath} from 'node:url';
+import {build} from 'esbuild';
+import {execFileSync} from 'node:child_process';
+import {copyFile,mkdir,rm} from 'node:fs/promises';
+process.chdir(fileURLToPath(new URL('.',import.meta.url)));
+await rm('dist',{recursive:true,force:true});
+await build({absWorkingDir:process.cwd(),entryPoints:['src/browser.ts'],bundle:true,format:'esm',platform:'browser',outfile:'dist/browser.js'});
+await build({absWorkingDir:process.cwd(),entryPoints:['src/server.ts'],bundle:true,format:'esm',platform:'node',outfile:'dist/server.js'});
+await build({absWorkingDir:process.cwd(),entryPoints:['src/relay.ts'],external:['./server.js'],bundle:true,format:'esm',platform:'node',outfile:'dist/relay.js'});
+await build({absWorkingDir:process.cwd(),entryPoints:['src/script.ts'],bundle:true,format:'iife',platform:'browser',minify:true,outfile:'dist/warehouse-0.1.0.js'});
+execFileSync(process.execPath,['../../node_modules/typescript/bin/tsc','-p','tsconfig.json'],{stdio:'inherit'});
+await mkdir('../../public/sdk',{recursive:true});
+await copyFile('dist/warehouse-0.1.0.js','../../public/sdk/warehouse-0.1.0.js');

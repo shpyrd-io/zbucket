@@ -1,0 +1,520 @@
+{
+  "metric": {
+    "key": "orbit_daily_events",
+    "kind": "count",
+    "name": "Orbit · Daily app events",
+    "unit": "events",
+    "status": "active",
+    "filters": {},
+    "category": "Product analytics",
+    "sourceId": "01a1dd65-2a20-72fe-b658-ad1ae49b8386",
+    "timezone": "UTC",
+    "direction": "neutral",
+    "inputMode": "events",
+    "maxSeries": 10000,
+    "datasetKey": "app_demo",
+    "dimensions": [
+      "name"
+    ],
+    "valueField": "value",
+    "description": "Daily event occurrences by action. Counts are not unique-person conversions. All dataset schema versions sharing the action field are included.",
+    "missingData": "leave_gaps",
+    "identityField": "identity",
+    "storagePolicy": {
+      "baseResolution": "day",
+      "dayRetentionDays": 730,
+      "rawRetentionDays": 30,
+      "baseRetentionDays": 730,
+      "hourRetentionDays": 730
+    },
+    "numeratorField": "numerator",
+    "denominatorField": "denominator",
+    "freshnessSeconds": 86400,
+    "revision": 1,
+    "reportingRevision": 0,
+    "id": "01a1dd8a-a2f4-72b4-8778-ad993bf513d9",
+    "version": 1,
+    "ownerId": "00000000-0000-7000-8000-000000000001",
+    "createdAt": "2026-11-15T04:50:12.000Z"
+  },
+  "job": {
+    "metric_id": "01a1dd8a-a2f4-72b4-8778-ad993bf513d9",
+    "source_id": "01a1dd65-2a20-72fe-b658-ad1ae49b8386",
+    "dataset_key": "app_demo",
+    "name_field": "name",
+    "created_at": "2026-11-15T04:50:12.843Z",
+    "status": "completed",
+    "cursor_at": "2026-11-15T04:09:36.288Z",
+    "cursor_id": "web:90c63ecd-1e04-4929-9d04-93267b525a5e",
+    "cursor_revision": 1,
+    "scanned": "25",
+    "inserted": "25",
+    "skipped": "0",
+    "completed_at": "2026-11-15T04:50:13.230Z",
+    "include_history": true,
+    "last_error": null,
+    "attempts": 0,
+    "key": "orbit_daily_events",
+    "name": "Orbit · Daily app events"
+  },
+  "daily": {
+    "groupBy": [
+      "name"
+    ],
+    "metric": {
+      "key": "orbit_daily_events",
+      "kind": "count",
+      "name": "Orbit · Daily app events",
+      "unit": "events",
+      "status": "active",
+      "filters": {},
+      "category": "Product analytics",
+      "sourceId": "01a1dd65-2a20-72fe-b658-ad1ae49b8386",
+      "timezone": "UTC",
+      "direction": "neutral",
+      "inputMode": "events",
+      "maxSeries": 10000,
+      "datasetKey": "app_demo",
+      "dimensions": [
+        "name"
+      ],
+      "valueField": "value",
+      "description": "Daily event occurrences by action. Counts are not unique-person conversions. All dataset schema versions sharing the action field are included.",
+      "missingData": "leave_gaps",
+      "identityField": "identity",
+      "storagePolicy": {
+        "baseResolution": "day",
+        "dayRetentionDays": 730,
+        "rawRetentionDays": 30,
+        "baseRetentionDays": 730,
+        "hourRetentionDays": 730
+      },
+      "numeratorField": "numerator",
+      "denominatorField": "denominator",
+      "freshnessSeconds": 86400,
+      "revision": 1,
+      "reportingRevision": 0,
+      "id": "01a1dd8a-a2f4-72b4-8778-ad993bf513d9",
+      "version": 1,
+      "ownerId": "00000000-0000-7000-8000-000000000001",
+      "createdAt": "2026-11-15T04:50:12.000Z"
+    },
+    "value": "25",
+    "count": "25",
+    "numerator": "0",
+    "denominator": "0",
+    "startsAt": "2026-11-15T00:00:00.000Z",
+    "endsAt": "2026-11-16T00:00:00.000Z",
+    "interval": "day",
+    "aggregation": "count",
+    "resolution": "day",
+    "quality": "partial",
+    "generation": "14628808:14628808:",
+    "lastReceivedAt": "2026-11-15T04:09:36.288Z",
+    "coverageEndsAt": null,
+    "series": [
+      {
+        "startsAt": "2026-11-15T00:00:00.000Z",
+        "value": "25",
+        "count": "25",
+        "quality": "partial"
+      }
+    ],
+    "groupCount": 4,
+    "groupChoices": [
+      {
+        "dimensions": {
+          "name": "app_opened"
+        },
+        "value": "10"
+      },
+      {
+        "dimensions": {
+          "name": "feature_used"
+        },
+        "value": "5"
+      },
+      {
+        "dimensions": {
+          "name": "report_exported"
+        },
+        "value": "3"
+      },
+      {
+        "dimensions": {
+          "name": "signup_completed"
+        },
+        "value": "7"
+      }
+    ],
+    "breakdown": {
+      "rows": [
+        {
+          "quality": "partial",
+          "dimensions": {
+            "name": "app_opened"
+          },
+          "value": "10",
+          "count": "10"
+        },
+        {
+          "quality": "partial",
+          "dimensions": {
+            "name": "feature_used"
+          },
+          "value": "5",
+          "count": "5"
+        },
+        {
+          "quality": "partial",
+          "dimensions": {
+            "name": "report_exported"
+          },
+          "value": "3",
+          "count": "3"
+        },
+        {
+          "quality": "partial",
+          "dimensions": {
+            "name": "signup_completed"
+          },
+          "value": "7",
+          "count": "7"
+        }
+      ],
+      "order": "dimensions_asc"
+    },
+    "groups": [
+      {
+        "dimensions": {
+          "name": "app_opened"
+        },
+        "series": [
+          {
+            "startsAt": "2026-11-15T00:00:00.000Z",
+            "value": "10",
+            "count": "10",
+            "quality": "partial"
+          }
+        ]
+      },
+      {
+        "dimensions": {
+          "name": "feature_used"
+        },
+        "series": [
+          {
+            "startsAt": "2026-11-15T00:00:00.000Z",
+            "value": "5",
+            "count": "5",
+            "quality": "partial"
+          }
+        ]
+      },
+      {
+        "dimensions": {
+          "name": "report_exported"
+        },
+        "series": [
+          {
+            "startsAt": "2026-11-15T00:00:00.000Z",
+            "value": "3",
+            "count": "3",
+            "quality": "partial"
+          }
+        ]
+      },
+      {
+        "dimensions": {
+          "name": "signup_completed"
+        },
+        "series": [
+          {
+            "startsAt": "2026-11-15T00:00:00.000Z",
+            "value": "7",
+            "count": "7",
+            "quality": "partial"
+          }
+        ]
+      }
+    ],
+    "groupDisplay": "groups",
+    "groupComplete": true
+  },
+  "funnelQueryId": "01a1dd8a-a74b-70d2-8b93-e719f543bcbd",
+  "dashboardId": "01a1dd8a-a76a-7127-822e-c0ed21eb047f",
+  "dashboardUrl": "http://127.0.0.1:4332/metrics?workspace=studio&item=01a1dd8a-a76a-7127-822e-c0ed21eb047f",
+  "metricUrl": "http://127.0.0.1:4332/metrics/01a1dd8a-a2f4-72b4-8778-ad993bf513d9",
+  "result": {
+    "runAt": "2026-11-15T04:50:14.003Z",
+    "item": {
+      "id": "01a1dd8a-a76a-7127-822e-c0ed21eb047f",
+      "name": "Orbit · Product analytics",
+      "kind": "dashboard",
+      "visibility": "company",
+      "ownerId": "00000000-0000-7000-8000-000000000001",
+      "revision": 1,
+      "config": {
+        "layout": "list",
+        "viewIds": [
+          "01a1dd8a-a754-75b2-ada1-3498856fcd2e",
+          "01a1dd8a-a763-766e-b8d6-4b7915c0dbf9"
+        ]
+      },
+      "updatedAt": "2026-11-15T04:50:13.993Z"
+    },
+    "panels": [
+      {
+        "id": "01a1dd8a-a754-75b2-ada1-3498856fcd2e",
+        "name": "Orbit · Conversion",
+        "chart": {
+          "kind": "funnel",
+          "orientation": "horizontal",
+          "stageTotals": true
+        },
+        "data": {
+          "title": "Orbit · Conversion",
+          "unit": "people",
+          "timezone": "UTC",
+          "interval": "funnel",
+          "startsAt": "2026-11-15T03:09:17.259Z",
+          "endsAt": "2026-11-16T04:09:17.259Z",
+          "measurementKind": "event_funnel",
+          "additive": false,
+          "partition": false,
+          "completeGroups": true,
+          "series": [
+            {
+              "id": "0",
+              "name": "app_opened",
+              "unit": "people",
+              "dimensions": {
+                "stage": "app_opened"
+              },
+              "total": "10",
+              "points": [
+                {
+                  "key": "2026-11-15T03:09:17.259Z",
+                  "value": "10",
+                  "quality": "observed"
+                }
+              ]
+            },
+            {
+              "id": "1",
+              "name": "signup_completed",
+              "unit": "people",
+              "dimensions": {
+                "stage": "signup_completed"
+              },
+              "total": "7",
+              "points": [
+                {
+                  "key": "2026-11-15T03:09:17.259Z",
+                  "value": "7",
+                  "quality": "observed"
+                }
+              ]
+            },
+            {
+              "id": "2",
+              "name": "feature_used",
+              "unit": "people",
+              "dimensions": {
+                "stage": "feature_used"
+              },
+              "total": "5",
+              "points": [
+                {
+                  "key": "2026-11-15T03:09:17.259Z",
+                  "value": "5",
+                  "quality": "observed"
+                }
+              ]
+            },
+            {
+              "id": "3",
+              "name": "report_exported",
+              "unit": "people",
+              "dimensions": {
+                "stage": "report_exported"
+              },
+              "total": "3",
+              "points": [
+                {
+                  "key": "2026-11-15T03:09:17.259Z",
+                  "value": "3",
+                  "quality": "observed"
+                }
+              ]
+            }
+          ],
+          "rows": [
+            {
+              "key": "0",
+              "label": "1 · app_opened",
+              "dimensions": {
+                "stage": "app_opened"
+              },
+              "value": "10"
+            },
+            {
+              "key": "1",
+              "label": "2 · signup_completed",
+              "dimensions": {
+                "stage": "signup_completed"
+              },
+              "value": "7"
+            },
+            {
+              "key": "2",
+              "label": "3 · feature_used",
+              "dimensions": {
+                "stage": "feature_used"
+              },
+              "value": "5"
+            },
+            {
+              "key": "3",
+              "label": "4 · report_exported",
+              "dimensions": {
+                "stage": "report_exported"
+              },
+              "value": "3"
+            }
+          ],
+          "notes": [
+            "Ordered conversion by person; 24 hour window. Counts are unique within this report and must not be summed across days."
+          ]
+        }
+      },
+      {
+        "id": "01a1dd8a-a763-766e-b8d6-4b7915c0dbf9",
+        "name": "Orbit · Daily activity",
+        "chart": {
+          "kind": "bar"
+        },
+        "data": {
+          "title": "Orbit · Daily activity",
+          "quality": "partial",
+          "dimensionOrder": [
+            "name"
+          ],
+          "measurementKind": "count",
+          "total": "25",
+          "unit": "events",
+          "timezone": "UTC",
+          "interval": "day",
+          "startsAt": "2026-11-15T00:00:00.000Z",
+          "endsAt": "2026-11-16T00:00:00.000Z",
+          "series": [
+            {
+              "id": "[[\"name\",\"app_opened\"]]",
+              "name": "name: app_opened",
+              "unit": "events",
+              "dimensions": {
+                "name": "app_opened"
+              },
+              "total": "10",
+              "points": [
+                {
+                  "key": "2026-11-15T00:00:00.000Z",
+                  "value": "10",
+                  "quality": "partial"
+                }
+              ]
+            },
+            {
+              "id": "[[\"name\",\"feature_used\"]]",
+              "name": "name: feature_used",
+              "unit": "events",
+              "dimensions": {
+                "name": "feature_used"
+              },
+              "total": "5",
+              "points": [
+                {
+                  "key": "2026-11-15T00:00:00.000Z",
+                  "value": "5",
+                  "quality": "partial"
+                }
+              ]
+            },
+            {
+              "id": "[[\"name\",\"report_exported\"]]",
+              "name": "name: report_exported",
+              "unit": "events",
+              "dimensions": {
+                "name": "report_exported"
+              },
+              "total": "3",
+              "points": [
+                {
+                  "key": "2026-11-15T00:00:00.000Z",
+                  "value": "3",
+                  "quality": "partial"
+                }
+              ]
+            },
+            {
+              "id": "[[\"name\",\"signup_completed\"]]",
+              "name": "name: signup_completed",
+              "unit": "events",
+              "dimensions": {
+                "name": "signup_completed"
+              },
+              "total": "7",
+              "points": [
+                {
+                  "key": "2026-11-15T00:00:00.000Z",
+                  "value": "7",
+                  "quality": "partial"
+                }
+              ]
+            }
+          ],
+          "rows": [
+            {
+              "key": "[[\"name\",\"app_opened\"]]",
+              "label": "name: app_opened",
+              "dimensions": {
+                "name": "app_opened"
+              },
+              "value": "10"
+            },
+            {
+              "key": "[[\"name\",\"feature_used\"]]",
+              "label": "name: feature_used",
+              "dimensions": {
+                "name": "feature_used"
+              },
+              "value": "5"
+            },
+            {
+              "key": "[[\"name\",\"report_exported\"]]",
+              "label": "name: report_exported",
+              "dimensions": {
+                "name": "report_exported"
+              },
+              "value": "3"
+            },
+            {
+              "key": "[[\"name\",\"signup_completed\"]]",
+              "label": "name: signup_completed",
+              "dimensions": {
+                "name": "signup_completed"
+              },
+              "value": "7"
+            }
+          ],
+          "additive": true,
+          "partition": true,
+          "completeGroups": true,
+          "notes": [
+            "partial · day storage · count"
+          ]
+        }
+      }
+    ]
+  }
+}

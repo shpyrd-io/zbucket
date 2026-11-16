@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Orbit Reports · Analytics demo</title>
+<style>body{font:16px system-ui;max-width:1050px;margin:60px auto;background:#fafafa;color:#18181b}header,section{background:white;border:1px solid #e4e4e7;border-radius:12px;padding:28px;margin:20px 0}small{color:#71717a}button{background:#18181b;color:white;padding:12px 20px;border:0;border-radius:7px;cursor:pointer}button:disabled{opacity:.5}h1{font-size:32px;margin:8px 0}h2{font-size:20px}pre{font-size:13px;white-space:pre-wrap;line-height:1.65}.stats{display:flex;gap:45px}.stats strong{font-size:30px;display:block}a{color:#18181b}</style>
+<header><small>FICTIONAL APP · LOCAL BROWSER SDK DEMONSTRATION</small><h1>Orbit Reports</h1><p>Understand how customers discover, sign up and use your reporting app.</p><button id="run">Simulate 10 customer journeys</button> <span id="status">Ready to collect</span></header>
+<section><h2>Customer journey</h2><div class="stats"><div><strong id="opened">0</strong>App opened</div><div><strong id="signup">0</strong>Signed up</div><div><strong id="used">0</strong>Used reports</div><div><strong id="exported">0</strong>Exported report</div></div></section>
+<section><h2>Live collection log</h2><small>Browser → POST /analytics/events → Warehouse → PostgreSQL worker</small><pre id="log">No events yet.</pre></section>
+<p><a href="http://127.0.0.1:4332/metrics/events" target="_blank">Open Warehouse event explorer →</a></p>
+<script src="/sdk.js"></script><script>
+const log=document.querySelector('#log'),status=document.querySelector('#status');
+async function session(person){const r=await fetch('/demo/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({person})});if(!r.ok)throw Error('Demo session failed');}
+async function emit(name,properties){await warehouse.track(name,properties);await warehouse.flush();log.textContent+=name+' '+JSON.stringify(properties)+'\n';}
+document.querySelector('#run').onclick=async()=>{document.querySelector('#run').disabled=true;log.textContent='';try{
+ await session(null);await warehouse.init({endpoint:'/analytics/events',flushIntervalMs:60000,onError:message=>{log.textContent+='ERROR '+message+'\n';}});
+ for(let i=1;i<=10;i++){
+  await session(null);await warehouse.reset();status.textContent='Collecting journey '+i+'/10';
+  await emit('app_opened',{platform:'web',campaign:i%2?'product_hunt':'organic',demo_person:i});document.querySelector('#opened').textContent=i;
+  if(i<=7){await session(i);await warehouse.identify('person-'+i);await emit('signup_completed',{method:i%2?'email':'google',plan:'trial'});document.querySelector('#signup').textContent=i;}
+  if(i<=5){await emit('feature_used',{feature:'reports',report_type:'revenue',first_use:true});document.querySelector('#used').textContent=i;}
+  if(i<=3){await emit('report_exported',{format:'csv',rows:120*i});document.querySelector('#exported').textContent=i;}
+ }
+ warehouse.destroy();status.textContent='25 events sent · waiting for worker';
+ for(let n=0;n<30;n++){const data=await(await fetch('/demo/report')).json();if(data.eventCount===25){status.textContent='25 events indexed · funnel verified: 10 → 7 → 5 → 3';return;}await new Promise(r=>setTimeout(r,1000));}throw Error('Worker has not completed yet');
+}catch(e){status.textContent=String(e);}};
+</script></html>

@@ -1,0 +1,16 @@
+{
+  "at": "2026-11-15T18:19:45.421Z",
+  "scope": "Isolated local PostgreSQL. Functional API acceptance plus synthetic published index load; no production network or concurrent ingestion benchmark.",
+  "checks": [
+    "Exact cross-day sequence, repeated starts, inclusive window, typed filters, batch boundaries, durable queue and concurrent deduplication",
+    "Failed batches are invisible; retry restarts a snapshot without double counting",
+    "Cancellation does not automatically requeue on polling",
+    "Corrections invalidate cached participants immediately; cached reads recheck current grants",
+    "Library reports queue and expose independent comparison-period counts",
+    "Identity linking invalidates cached cohorts; concurrent deletion preserves snapshot consistency and blocks old results; cleanup removes invalid participants",
+    "Total budget errors stop after three attempts; explicit retry and expired-lease recovery complete safely"
+  ],
+  "passed": 7,
+  "completed": true,
+  "cleanedUp": true
+}

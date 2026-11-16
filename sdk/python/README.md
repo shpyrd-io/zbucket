@@ -103,3 +103,7 @@ A save is full replacement, not partial PATCH: include content and metadata you 
 - Constructor `timeout` is a per-attempt network timeout (default 30s). Receipt polling has a separate bounded polling budget. Responses are capped at 32 MiB; narrow or paginate larger queries. No background polling, threads, scheduling, async client or administrative credential-management API is included.
 
 The source of truth for payloads remains [Metrics API](../../docs/metrics-api.md) and [Knowledge API](../../docs/knowledge-api.md).
+
+### Event history
+
+`client.metrics.event_timeline(query)` and `client.metrics.event_funnel(query)` use the same backend token and require explicit `metrics.eventRead` dataset grants. Publish through the existing `client.metrics.events(...)` method; exploration-enabled datasets also require `metrics.eventWrite`. See `docs/metrics-api.md` for mappings, retention, pagination, and funnel semantics.

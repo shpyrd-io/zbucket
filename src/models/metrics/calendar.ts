@@ -10,7 +10,7 @@ export function metricPeriod(preset:string,zone='UTC',now=new Date(),weekStart=1
  else if(preset==='ytd'||preset==='last_year'){if(m<fiscalMonth)y--;m=fiscalMonth;d=1;if(preset==='last_year'){end=at(y,m,d);y--;}}
  else if(preset==='qtd'||preset==='last_quarter'){const offset=(m-fiscalMonth+12)%12;m-=offset%3;d=1;if(preset==='last_quarter'){end=at(y,m,d);m-=3;}}
  else if(preset==='last_2_years'){y-=2;}
- else if(preset==='last_30_days')return{startsAt:new Date(now.getTime()-30*86400000).toISOString(),endsAt:end};
+ else if(preset==='last_30_days'||preset==='last_7_days')return{startsAt:new Date(now.getTime()-(preset==='last_7_days'?7:30)*86400000).toISOString(),endsAt:end};
  else if(preset==='yesterday'){end=at(y,m,d);d--;}
  return{startsAt:at(y,m,d),endsAt:end};
 }

@@ -10,6 +10,7 @@ export async function migrateWarehouse(pool:pg.Pool){await transaction(pool,asyn
  CREATE UNIQUE INDEX IF NOT EXISTS warehouse_app_name ON warehouse_apps(lower(name));
  CREATE TABLE IF NOT EXISTS warehouse_credentials(id uuid PRIMARY KEY,app_id uuid NOT NULL REFERENCES warehouse_apps,secret_hash text UNIQUE NOT NULL,expires_at timestamptz NOT NULL,revoked_at timestamptz,last_used_at timestamptz,created_at timestamptz NOT NULL DEFAULT now());
  CREATE TABLE IF NOT EXISTS warehouse_rate_limits(app_id uuid PRIMARY KEY,window_start timestamptz NOT NULL,requests integer NOT NULL);
+ CREATE TABLE IF NOT EXISTS warehouse_event_rate_limits(app_id uuid PRIMARY KEY REFERENCES warehouse_apps(id),window_start timestamptz NOT NULL,requests integer NOT NULL,events integer NOT NULL);
  CREATE TABLE IF NOT EXISTS warehouse_audit(id uuid PRIMARY KEY,actor_id uuid NOT NULL,action text NOT NULL,target text NOT NULL,status integer NOT NULL,created_at timestamptz NOT NULL DEFAULT now());
  CREATE TABLE IF NOT EXISTS warehouse_snapshots(id uuid PRIMARY KEY,app_id uuid NOT NULL,metric_key text NOT NULL,query jsonb NOT NULL,result jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now());
  CREATE TABLE IF NOT EXISTS knowledge_collections(key text PRIMARY KEY,name text NOT NULL);

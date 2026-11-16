@@ -36,6 +36,7 @@ export function useRunMetricLibrary(id: string) {
     enabled: !!id,
     retry: false,
     staleTime: 60000,
+    refetchInterval:query=>query.state.data?.panels.some(p=>p.processing)?2000:false,
   });
 }
 export function useMetricDistribution(q: MetricQuery, enabled: boolean, livePeriod?: string) {

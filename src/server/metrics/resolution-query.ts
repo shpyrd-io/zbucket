@@ -118,7 +118,7 @@ export async function queryResolution(c:pg.PoolClient,m:Metric,q:MetricQuery):Pr
  const resultRows=await c.query(`${common},${rows} SELECT * FROM results ORDER BY t NULLS FIRST,g NULLS FIRST LIMIT 100002`,params);
  check(resultRows.rows.length<=100000,'Grouped result exceeds the point budget. Filter dimensions or use a coarser interval.');
  const all=resultRows.rows,summary=all.find(r=>r.t===null&&r.g===null);
- const pending=await c.query(`SELECT 1 FROM metric_record_keys WHERE NOT processed AND payload->'projections' @> $1::jsonb LIMIT 1`,[JSON.stringify([{metricId:m.id,version:m.version}])]);
+ const pending=await c.query(`SELECT 1 FROM metric_record_keys WHERE NOT processed AND payload->'projections' @> $1::jsonb UNION ALL SELECT 1 FROM metric_event_processing WHERE metric_id=$2 AND status<>'completed' LIMIT 1`,[JSON.stringify([{metricId:m.id,version:m.version}]),m.id]);
  const coverage=await c.query(`WITH required AS(SELECT dimensions FROM metric_dimension_sets WHERE metric_id=$1 AND version=$2 AND dimensions @> $5::jsonb),covered AS(SELECT dimensions,range_agg(tstzrange(starts_at,ends_at,'[)')) ranges,max(ends_at) ends_at FROM metric_coverage WHERE metric_id=$1 AND version=$2 AND dimensions @> $5::jsonb GROUP BY dimensions) SELECT count(*) required,count(*) FILTER(WHERE ranges @> tstzrange($3::timestamptz,$4::timestamptz,'[)')) complete,min(ends_at) ends_at FROM required LEFT JOIN covered USING(dimensions)`,params.slice(0,5));
  const covered=coverage.rows[0].required!=='0'&&coverage.rows[0].required===coverage.rows[0].complete;
  const metadata=(r:Record<string,unknown>|undefined):ObservationMetadata=>snapshot?{
