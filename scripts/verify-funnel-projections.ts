@@ -90,20 +90,39 @@ try{
   const c=await pool.connect();try{
    await c.query("BEGIN; SET LOCAL statement_timeout='180s'");
    const receipt=(await c.query("INSERT INTO metric_ingestions(id,source_id,status,record_count,payload_hash) VALUES(gen_random_uuid(),$1,'completed',0,'synthetic') RETURNING id",[sourceId])).rows[0].id;
-   await c.query(`CREATE TEMP TABLE generated ON COMMIT DROP AS SELECT g::text actor,(g::bigint*10+s)::text id,($2::timestamptz+(g%7)*interval '1 day'+s*interval '1 second') at,(ARRAY['open','signup','use','export'])[s] name FROM generate_series(1,$1::int) g CROSS JOIN generate_series(1,4) s WHERE s<=1+g%4`,[count,at(2)]);
-   await c.query(`INSERT INTO generated SELECT g::text,(g::bigint*10)::text,$2::timestamptz+(g%7)*interval '1 day','open' FROM generate_series(1,$1::int) g`,[count,at(0)]);
+   await c.query('COMMIT');
+   // Bound fixture-building statements independently of the unchanged worker budgets.
+   for(let first=1;first<=count;first+=100000){
+   const last=Math.min(first+99999,count);await c.query("BEGIN; SET LOCAL statement_timeout='180s'");
+   await c.query(`CREATE TEMP TABLE generated ON COMMIT DROP AS SELECT g::text actor,(g::bigint*10+s)::text id,($2::timestamptz+(g%7)*interval '1 day'+s*interval '1 second') at,(ARRAY['open','signup','use','export'])[s] name FROM generate_series($3::int,$1::int) g CROSS JOIN generate_series(1,4) s WHERE s<=1+g%4`,[last,at(2),first]);
+   await c.query(`INSERT INTO generated SELECT g::text,(g::bigint*10)::text,$2::timestamptz+(g%7)*interval '1 day','open' FROM generate_series($3::int,$1::int) g`,[last,at(0),first]);
    await c.query(`INSERT INTO metric_record_keys(source_id,record_id,revision,hash,ingestion_id,payload,processed) SELECT $1,'load-'||id,1,'synthetic',$2,jsonb_build_object('projections','[]'::jsonb,'original',jsonb_build_object('mode','events','datasetKey','load','schemaVersion',1,'record',jsonb_build_object('occurredAt',at,'data',jsonb_build_object('name',name,'person','user:'||actor,'account','group:'||actor,'properties',jsonb_build_object('paid',true))))),true FROM generated`,[sourceId,receipt]);
-   await c.query(`INSERT INTO metric_event_index SELECT $1,'load-'||id,1,'load',1,at,name,'user:'||actor,'group:'||actor,NULL FROM generated`,[sourceId]);await c.query('ANALYZE metric_event_index');await c.query('ANALYZE metric_record_keys');await c.query('COMMIT');
+   await c.query(`INSERT INTO metric_event_index SELECT $1,'load-'||id,1,'load',1,at,name,'user:'||actor,'group:'||actor,NULL FROM generated`,[sourceId]);await c.query('COMMIT');
+   console.log('Fixture participants:',last,'/',count,'elapsed seconds:',Math.round((performance.now()-fixtureStart)/1000));
+   }
+   await c.query('ANALYZE metric_event_index');await c.query('ANALYZE metric_record_keys');
   }catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}
   report.fixtureMs=performance.now()-fixtureStart;
   const lq={...q,datasetKey:'load',startsAt:at(0),endsAt:at(10),steps:[{name:'open'},{name:'signup'},{name:'use'},{name:'export',properties:{paid:true}}]};
   const timedRun=async(query:typeof lq)=>{const pending=await call('metrics/event-funnel-runs',query);const start=performance.now();await drain();const done=await call('metrics/event-funnel-runs/'+pending.runId,{});assert.equal(done.status,'completed',JSON.stringify(done));return {ms:performance.now()-start,done,metadata:(await pool!.query('SELECT metadata FROM metric_funnel_runs WHERE id=$1',[done.runId])).rows[0].metadata};};
-  console.log('Measuring direct engine');const baseline=await timedRun(lq);assert.deepEqual(counts(baseline.done),[count,count*.75,count*.5,count*.25]);
-  const warmBaseline=await timedRun({...lq,windowSeconds:lq.windowSeconds+1});assert.deepEqual(counts(warmBaseline.done),counts(baseline.done));
-  const loadSaved=await save(lq,'Load saved funnel');console.log('Backfilling saved funnel');let start=performance.now();await drain();const fillMs=performance.now()-start;
+  const expectedCounts=[count,count*.75,count*.5,count*.25];
+  const load:Record<string,any>=report.load={participants:count,events:count*3.5};
+  const baselineRun=async(query:typeof lq)=>{
+   const start=performance.now();try{const r=await timedRun(query);assert.deepEqual(counts(r.done),expectedCounts);return {ms:r.ms,metadata:r.metadata};}
+   catch(error){const failed=await call('metrics/event-funnel-runs',query);await call('metrics/event-funnel-runs/'+failed.runId,{action:'cancel'});const failure={ms:performance.now()-start,status:failed.status,error:error instanceof Error?error.message:String(error)};console.log('Direct engine did not complete:',failure);return failure;}
+  };
+  console.log('Measuring direct engine');load.baseline=await baselineRun(lq);
+  load.warmBaseline=await baselineRun({...lq,windowSeconds:lq.windowSeconds+1});
+  const loadSaved=await save(lq,'Load saved funnel');console.log('Backfilling saved funnel');let start=performance.now();
+  try{await drain();}catch(error){
+   const failed=(await pool.query('SELECT initialized,processed_events,attempts,error,stats FROM metric_funnel_definitions d JOIN metric_funnel_subscriptions s ON s.definition_id=d.id WHERE s.library_id=$1',[loadSaved.id])).rows[0];
+   load.backfill={ms:performance.now()-start,...failed};throw error;
+  }
+  const fillMs=performance.now()-start;
   const def=(await pool.query('SELECT d.* FROM metric_funnel_definitions d JOIN metric_funnel_subscriptions s ON s.definition_id=d.id WHERE s.library_id=$1',[loadSaved.id])).rows[0];
-  console.log('Measuring materialized periods');const projected=await timedRun(lq);assert.deepEqual(counts(projected.done),counts(baseline.done));
-  const periods=[];for(const [from,to] of [[0,7],[3,9],[2,5]]){const result=await timedRun({...lq,startsAt:at(from),endsAt:at(to)});
+  load.backfill={ms:fillMs,stats:def.stats};console.log('Backfill complete in seconds:',fillMs/1000);
+  console.log('Measuring materialized periods');const projected=await timedRun(lq);assert.deepEqual(counts(projected.done),expectedCounts);load.projected={ms:projected.ms,metadata:projected.metadata};
+  const periods:any[]=load.periods=[];for(const [from,to] of [[0,7],[3,9],[2,5]]){const result=await timedRun({...lq,startsAt:at(from),endsAt:at(to)});
    const expected=[0,0,0,0];for(let person=1;person<=count;person++){
     const early=person%7,main=early+2,start=main+1/86400;
     if((early>=from&&early<to)||(start>=from&&start<to))expected[0]++;
@@ -117,9 +136,10 @@ try{
   start=performance.now();await drain();const incrementalMs=performance.now()-start;const incrementalStats=(await pool.query('SELECT stats FROM metric_funnel_definitions WHERE id=$1',[def.id])).rows[0].stats;
   const after=await timedRun(lq);assert.deepEqual(counts(after.done),[count,count*.75,count*.5,count*.25+100]);
   const next=await call('metrics/event-funnel-runs/'+after.done.runId,{after:after.done.nextCursor});assert.equal(new Set([...after.done.participants,...next.participants].map((m:any)=>m.id)).size,100);
-  report.load={participants:count,events:baseline.done.processedEvents,baseline:{ms:baseline.ms,metadata:baseline.metadata},warmBaseline:{ms:warmBaseline.ms,metadata:warmBaseline.metadata},backfill:{ms:fillMs,stats:def.stats},projected:{ms:projected.ms,metadata:projected.metadata},periods,cachedReadMs:cache,concurrentCachedReads:{requests:10,totalMs:concurrentReadMs},incremental:{addedEvents:100,ingestMs,ms:incrementalMs,stats:incrementalStats,reportMs:after.ms},occurrences:(await pool.query('SELECT count(*)::int n FROM metric_funnel_occurrences WHERE definition_id=$1',[def.id])).rows[0].n,storageBytes:(await pool.query("SELECT pg_total_relation_size('metric_funnel_occurrences')::text bytes")).rows[0].bytes,rssMiB:Math.round(process.memoryUsage().rss/1024**2)};
-  checks.push('Load: exact 150k-style cohort, direct timings, reusable periods, persisted drilldown, API incremental ingestion and bounded actor rebuilding');
+  Object.assign(load,{cachedReadMs:cache,concurrentCachedReads:{requests:10,totalMs:concurrentReadMs},incremental:{addedEvents:100,ingestMs,ms:incrementalMs,stats:incrementalStats,reportMs:after.ms},occurrences:(await pool.query('SELECT count(*)::int n FROM metric_funnel_occurrences WHERE definition_id=$1',[def.id])).rows[0].n,storageBytes:(await pool.query("SELECT pg_total_relation_size('metric_funnel_occurrences')::text bytes")).rows[0].bytes,rssMiB:Math.round(process.memoryUsage().rss/1024**2)});
+  assert.ok(!load.baseline.error&&!load.warmBaseline.error,'Direct engine failed; preprocessing results are retained in the report.');
+  checks.push('Load: exact configured cohort, direct timings, reusable periods, persisted drilldown, API incremental ingestion and bounded actor rebuilding');
  }
  report.checks=checks;report.completed=true;
-}catch(e){report.error=e instanceof Error?e.message:String(e);throw e;}
-finally{await pool?.end();await root.query(`DROP SCHEMA ${schema} CASCADE`);await root.end();report.cleanedUp=true;await writeFile(process.argv.includes('--load')?'experiments/metrics/funnel-projections-load.json':'experiments/metrics/funnel-projections-acceptance.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report,null,2));}
+}catch(e){report.checks=checks;report.error=e instanceof Error?e.message:String(e);throw e;}
+finally{await pool?.end();await root.query(`DROP SCHEMA ${schema} CASCADE`);await root.end();report.cleanedUp=true;await writeFile(process.argv.includes('--load')?`experiments/metrics/funnel-projections-load${process.env.FUNNEL_LOAD_PEOPLE?'-'+process.env.FUNNEL_LOAD_PEOPLE:''}.json`:'experiments/metrics/funnel-projections-acceptance.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report,null,2));}

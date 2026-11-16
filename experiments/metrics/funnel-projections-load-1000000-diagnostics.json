@@ -1,0 +1,57 @@
+{
+  "scope": "Post-run observations from the isolated local scale test. No additional analytics measurements were completed after the backfill failure.",
+  "environment": {
+    "cpu": "Apple M2",
+    "logicalCpus": 8,
+    "ramGiB": 24,
+    "node": "v24.16.0",
+    "postgres": "18.3 (Homebrew, aarch64)",
+    "sharedBuffersMiB": 128,
+    "workerWorkMemMiB": 16,
+    "workerStatementTimeoutMs": 30000,
+    "workerExecutionBudgetMs": 120000
+  },
+  "hostLoadSamples": [
+    {
+      "at": "during fixture creation",
+      "oneMinute": 20.390625
+    },
+    {
+      "at": "2026-11-16T18:55:37.205Z",
+      "oneMinute": 6.7626953125
+    },
+    {
+      "at": "2026-11-16T18:57:36.167Z",
+      "oneMinute": 10.51953125
+    }
+  ],
+  "correctness": {
+    "rawEventsProcessed": 3500000,
+    "rawCounts": [
+      1000000,
+      750000,
+      500000,
+      250000
+    ],
+    "bothDirectRunsPassed": true
+  },
+  "backfillObservation": {
+    "at": "2026-11-16T18:57:36.167Z",
+    "initialized": false,
+    "processedEvents": 0,
+    "completedFailedAttempts": 0
+  },
+  "postgresError": {
+    "at": "2026-11-16T15:57:51.630-03:00",
+    "message": "canceling statement due to statement timeout",
+    "statement": "FETCH 5000 FROM projection_cursor",
+    "source": "local PostgreSQL server log"
+  },
+  "limits": [
+    "The harness stopped after the first backfill attempt failed; the production worker retry policy was not exhausted in this scale test.",
+    "No projected-period, cache, incremental or occurrence-storage measurements were produced at one million participants.",
+    "The machine was shared with other workloads. The earlier 150,000-person run was not a controlled hardware-load comparison.",
+    "No EXPLAIN ANALYZE plan was captured. The initial cursor fetch timed out; relative join, sort and I/O costs are not isolated.",
+    "Fixture publication is synthetic and does not measure API ingestion throughput."
+  ]
+}

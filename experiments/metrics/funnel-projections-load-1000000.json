@@ -1,0 +1,41 @@
+{
+  "at": "2026-11-16T18:39:57.966Z",
+  "scope": "Isolated local PostgreSQL; real API ingestion for correctness and incremental updates, synthetic published index fixture for load. No production capacity claim.",
+  "fixtureMs": 906594.565667,
+  "load": {
+    "participants": 1000000,
+    "events": 3500000,
+    "baseline": {
+      "ms": 62810.778374999994,
+      "metadata": {
+        "engine": "events",
+        "timing": {
+          "readMs": 30406.87566500099,
+          "totalMs": 62778.17412500002,
+          "writeMs": 31275.356631999603,
+          "computeMs": 546.3999100005021
+        },
+        "recomputing": false,
+        "retainedSince": "2026-10-17T18:55:08.670Z",
+        "skippedRecords": 0
+      }
+    },
+    "warmBaseline": {
+      "ms": 69970.36329100002,
+      "metadata": {
+        "engine": "events",
+        "timing": {
+          "readMs": 31673.73361699679,
+          "totalMs": 69936.90970800002,
+          "writeMs": 37050.80660800019,
+          "computeMs": 657.5032969997264
+        },
+        "recomputing": false,
+        "retainedSince": "2026-10-17T18:56:11.475Z",
+        "skippedRecords": 0
+      }
+    }
+  },
+  "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   {\n+     error: 'canceling statement due to statement timeout'\n+   }\n+ ]\n- []\n",
+  "cleanedUp": true
+}

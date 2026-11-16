@@ -927,6 +927,7 @@ Validation and load measurement:
 ```sh
 npm run test:funnel-projections
 npm run test:funnel-projections -- --load
+FUNNEL_LOAD_PEOPLE=1000000 npm run test:funnel-projections -- --load
 ```
 
 The load fixture defaults to 150,000 actors and 525,000 indexed events. It measures
@@ -935,6 +936,32 @@ period queries, cached reads, and 100 real API events updating existing actors.
 Reports include occurrence storage and observed process RSS, not peak memory.
 Fixture creation is timed separately from analytics and is not an ingestion
 throughput measurement. The script creates and removes an isolated local schema.
-`FUNNEL_LOAD_PEOPLE` can change fixture size; only sizes actually run constitute
-validation. Entry-cohort periods, arbitrary unsaved-funnel precomputation and
-constant-cost updates for actors with unbounded history are not implemented.
+`FUNNEL_LOAD_PEOPLE` can change fixture size; explicit sizes write separate
+`experiments/metrics/funnel-projections-load-<people>.json` reports, preserving
+the default baseline. Fixture loading commits every 100,000 actors; analytics
+worker SQL and execution budgets remain unchanged. If the direct engine fails,
+the harness records its error and still attempts preprocessing before failing
+the overall check. Only sizes actually run constitute validation. Entry-cohort
+periods, arbitrary unsaved-funnel precomputation and constant-cost updates for actors with unbounded history are not implemented.
+
+Scale check on November 16, 2026: the [one-million-participant report](../experiments/metrics/funnel-projections-load-1000000.json)
+contains 3,500,000 events, 6.67 times the default fixture. Both direct runs
+returned the exact counts `1,000,000 → 750,000 → 500,000 → 250,000`, in 62.81s
+and 69.97s including the first result read. The first run spent 30.41s reading,
+31.28s writing participants and 0.55s in the sequence algorithm.
+
+The initial saved-funnel backfill failed on its first attempt: PostgreSQL
+cancelled `FETCH 5000 FROM projection_cursor` at the existing 30s statement
+limit. The harness stopped and removed its schema, so there are no measurements
+for projected periods, cached reads or incremental updates at this scale, and
+the normal retry policy was not exhausted. The [diagnostic observations](../experiments/metrics/funnel-projections-load-1000000-diagnostics.json)
+record the server error, progress and environment. No query plan was captured;
+join, sort and I/O costs inside the initial fetch are not separately measured.
+The shared M2/24 GiB machine was busy; this is not a controlled comparison with
+the previous 150,000-participant run or a production capacity claim.
+
+The next scalability step is a resumable initial backfill with bounded actor
+batches, using indexed actor selection before loading event histories. It needs
+an explicit build generation/checkpoint and dirty-queue catch-up so period
+queries only see a consistent published revision. The current implementation
+still reads full retained history through one cursor for initial preprocessing.
