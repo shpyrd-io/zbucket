@@ -1,0 +1,146 @@
+{
+  "at": "2026-11-16T16:51:07.912Z",
+  "scope": "Isolated local PostgreSQL; real API ingestion for correctness and incremental updates, synthetic published index fixture for load. No production capacity claim.",
+  "fixtureMs": 75631.535958,
+  "load": {
+    "participants": 150000,
+    "events": 525000,
+    "baseline": {
+      "ms": 9507.990625000006,
+      "metadata": {
+        "engine": "events",
+        "timing": {
+          "readMs": 7169.975426000077,
+          "totalMs": 9498.018666999997,
+          "writeMs": 2152.0495450000017,
+          "computeMs": 105.03850199993758
+        },
+        "recomputing": false,
+        "retainedSince": "2026-10-17T16:52:24.186Z",
+        "skippedRecords": 0
+      }
+    },
+    "warmBaseline": {
+      "ms": 5251.909709,
+      "metadata": {
+        "engine": "events",
+        "timing": {
+          "readMs": 2991.935787000053,
+          "totalMs": 5170.385959000007,
+          "writeMs": 2099.732007999919,
+          "computeMs": 56.849624999958905
+        },
+        "recomputing": false,
+        "retainedSince": "2026-10-17T16:52:33.650Z",
+        "skippedRecords": 0
+      }
+    },
+    "backfill": {
+      "ms": 11003.732417000007,
+      "stats": {
+        "mode": "backfill",
+        "actors": 150000,
+        "events": 525000,
+        "readMs": 3060.2932419999706,
+        "totalMs": 10993.476125000001,
+        "writeMs": 7053.147039999909,
+        "computeMs": 808.0451690000045,
+        "occurrences": 525000,
+        "queuedActors": 0
+      }
+    },
+    "projected": {
+      "ms": 310.62645900000643,
+      "metadata": {
+        "engine": "projection",
+        "totalMs": 302.11533300000883,
+        "recomputing": false,
+        "participants": 150000,
+        "retainedSince": "2026-10-17T16:52:50.999Z",
+        "skippedRecords": 0
+      }
+    },
+    "periods": [
+      {
+        "from": 0,
+        "to": 7,
+        "ms": 125.44062500000291,
+        "counts": [
+          150000,
+          80358,
+          53572,
+          26786
+        ]
+      },
+      {
+        "from": 3,
+        "to": 9,
+        "ms": 138.2560419999936,
+        "counts": [
+          128572,
+          96429,
+          64286,
+          32143
+        ]
+      },
+      {
+        "from": 2,
+        "to": 5,
+        "ms": 293.24775000000955,
+        "counts": [
+          107144,
+          48215,
+          32143,
+          16071
+        ]
+      }
+    ],
+    "cachedReadMs": [
+      7.071916999993846,
+      8.089334000003873,
+      7.754708000007668,
+      5.283125000001746,
+      6.823417000006884,
+      4.7129579999891575,
+      4.408916000000318,
+      4.781999999991967,
+      4.632792000003974,
+      8.742790999996942
+    ],
+    "concurrentCachedReads": {
+      "requests": 10,
+      "totalMs": 38.89545799999905
+    },
+    "incremental": {
+      "addedEvents": 100,
+      "ingestMs": 96.03545899999153,
+      "ms": 256.3968339999992,
+      "stats": {
+        "mode": "incremental",
+        "actors": 100,
+        "events": 500,
+        "readMs": 36.2621669999935,
+        "totalMs": 253.5429170000134,
+        "writeMs": 208.07020800000464,
+        "computeMs": 0.9158749999915017,
+        "occurrences": 500,
+        "queuedActors": 100
+      },
+      "reportMs": 181.55279200000223
+    },
+    "occurrences": 525100,
+    "storageBytes": "105168896",
+    "rssMiB": 220
+  },
+  "checks": [
+    "Historical fill, shared definitions independent of period, cross-day and repeated attempts exactly match direct engine",
+    "Only affected actors are rebuilt; failed publication rolls back atomically and retries without double counting",
+    "Concurrent ingestion during preprocessing remains queued and converges to the exact result",
+    "Corrections and anonymous linking rebuild exact sequences; account identity stays at event time",
+    "Definition revisions, proactive saved-period warming and permission checks on cached participants",
+    "Three-attempt failure limit, explicit retry, operational disable/enable rebuild and retained-history cleanup",
+    "Load: exact 150k-style cohort, direct timings, reusable periods, persisted drilldown, API incremental ingestion and bounded actor rebuilding"
+  ],
+  "completed": true,
+  "cleanedUp": true
+}

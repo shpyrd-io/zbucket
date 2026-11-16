@@ -1,3 +1,4 @@
+import {subscribeFunnel} from './funnel-projections';
 import {requestFunnelRun,FunnelProcessing} from './funnel-runs';
 import {funnelPeriods} from '@/models/metrics/funnel-periods';
 import {eventFunnelPlot} from '@/models/metrics/event-funnel-plot';
@@ -105,6 +106,7 @@ export async function librarySave(
           `INSERT INTO metric_library(id,name,kind,visibility,owner_id,config) VALUES($1,$2,$3,$4,$5,$6) RETURNING ${columns}`,
           [uuid(), item.name, item.kind, item.visibility, actor, item.config],
         );
+    await subscribeFunnel(c,result.rows[0].id,item.config.eventFunnel);
     await c.query("COMMIT");
     return result.rows[0];
   } catch (e) {
@@ -200,6 +202,7 @@ export async function libraryRun(pool: pg.Pool, actor: string, id: string) {
           const comparison=bounds.comparison?await requestFunnelRun(pool,principal,{...s.query,...bounds.comparison}):undefined;
           if(result.status!=="completed")throw new FunnelProcessing(result);
           if(comparison&&comparison.status!=="completed")throw new FunnelProcessing(comparison);
+          if(comparison&&(result.projectionId||comparison.projectionId)&&(result.projectionId!==comparison.projectionId||result.projectionRevision!==comparison.projectionRevision))throw new FunnelProcessing({...result,status:"queued",error:"Updating comparison to the same preprocessing revision."});
           return eventFunnelPlot(result,{...s.query,...bounds.current},comparison,bounds.comparison,bounds.timezone);
         })() : runSavedQuery(pool, i.config.query!, now).then((r) => metricPlot(r)),
       );

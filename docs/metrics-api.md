@@ -783,7 +783,7 @@ Use `unit: "person"` to require one person to complete the sequence, or `"accoun
 
 The response contains cumulative `steps: [{name,count}]`, `unit`, `windowSeconds`, `candidateEvents`, processing metadata and an identity page. Select `stage` (one-based) and `outcome: "reached"` to list identities reaching that stage, or `"dropped"` for identities whose deepest stage is exactly that stage. Drop-off is observed in the selected period; recent entrants may still convert later. `participants` contains `{id,reached}`; `totalParticipants` is the matching cohort size. Pass `nextCursor` as `after` to paginate 50 identities at a time. Use a returned ID as `accountId` or `userId` in the timeline query with the same dataset and period.
 
-Interactive funnels read at most 50,000 candidate events and 16 MiB of step-filter property data and run under a five-second database statement timeout. Oversized queries fail explicitly rather than returning sampled or truncated counts. Queries compute over a consistent database snapshot; there is no persisted funnel report cache or saved funnel definition in this version. The UI supports event-name steps; property filters are available through the API. Percentages shown are relative to the first step.
+Interactive funnels read at most 50,000 candidate events and 16 MiB of step-filter property data and run under a five-second database statement timeout. Oversized queries fail explicitly rather than returning sampled or truncated counts. Queries compute over a consistent database snapshot. This legacy endpoint does not use the saved-funnel projections or background result cache described below. The UI supports event-name steps; property filters are available through the API. Percentages shown are relative to the first step.
 
 ### Retention and publication
 
@@ -830,14 +830,111 @@ Read/paginate a fixed result with `POST /api/v1/metrics/event-funnel-runs/:id` a
 
 POST `{action:"cancel"}` to the run path to cancel a run you requested. POST `{action:"retry"}` to retry a failed/cancelled run; the dataset read grant is required. Worker failures retry up to three times with backoff. Expired leases can be recovered; attempt tokens prevent stale workers from publishing. Partial participants are never visible. A retry restarts the calculation from a new consistent snapshot rather than resuming a cursor against changed data.
 
-Each run reads a repeatable-read snapshot through a PostgreSQL cursor, ordered by resolved person/account, occurrence time, and event ID with C collation. Equal timestamps have a deterministic event-ID order, not a guarantee of real-world causal order. The streaming evaluator keeps one participant's sequence state and a bounded batch in memory. Other events may occur between funnel steps; a single occurrence cannot satisfy two repeated steps. Repeated entry attempts can convert within the window; a participant counts once per report. All steps must fall within the selected `[startsAt, endsAt)` period. Accounts use event-time membership, never retroactive person-to-account assignment.
+Unsaved definitions use a repeatable-read snapshot through a PostgreSQL cursor, ordered by resolved person/account, occurrence time, and event ID with C collation. Equal timestamps have a deterministic event-ID order, not a guarantee of real-world causal order. The streaming evaluator keeps one participant's sequence state and a bounded batch in memory. Other events may occur between funnel steps; a single occurrence cannot satisfy two repeated steps. Repeated entry attempts can convert within the window; a participant counts once per report. All steps must fall within the selected `[startsAt, endsAt)` period. Accounts use event-time membership, never retroactive person-to-account assignment.
 
 The worker fetches 5,000 candidates per batch, uses a 30-second SQL statement timeout, and checks a 120-second total deadline between batches. An in-flight statement may extend that deadline by up to its statement timeout. There is no fixed candidate-count cap in this path. Resource-budget failures are explicit errors, not partial results. Property filters are parameterized, typed JSON comparisons; requests without property filters avoid the original-payload join.
 
 Statement-level generation triggers track index and identity changes transactionally. New events can reuse a completed result for up to five minutes, marked `stale` with its snapshot time. Index deletions/updates and identity changes invalidate older results immediately. Old results can return `invalidated`; request a new run instead of mixing pages. Cache cleanup removes terminal runs after seven days, on invalidation, or when their requested history expires. Metrics-only purges do not delete independent behavioral history. Retained cached counts do not extend event retention.
 
-Saved event-funnel configurations support `period:"last_7_days"`, `timezone`, and `compare:"none"|"previous_period"|"previous_year"|"custom"`. Custom comparisons provide `compareStartsAt` and `compareEndsAt` as ISO instants. `previous_period` is the immediately preceding equal elapsed duration; `previous_year` preserves local calendar dates/times, clamping leap days. These are distinct from a full previous-calendar-month comparison, which can be selected with custom bounds. Rolling periods share five-minute reference boundaries. Current and comparison runs each use a consistent snapshot, potentially at different times; both snapshot times are disclosed. Counts and conversion rates are calculated independently, never by summing daily unique counts or averaging daily rates. Calendar timezone affects presets; fixed input timestamps retain their explicit offsets.
+Saved event-funnel configurations support `period:"last_7_days"`, `timezone`, and `compare:"none"|"previous_period"|"previous_year"|"custom"`. Custom comparisons provide `compareStartsAt` and `compareEndsAt` as ISO instants. `previous_period` is the immediately preceding equal elapsed duration; `previous_year` preserves local calendar dates/times, clamping leap days. These are distinct from a full previous-calendar-month comparison, which can be selected with custom bounds. Rolling periods share five-minute reference boundaries. Saved, preprocessed current and comparison runs must use the same projection revision before the Library displays them. The fallback event engine uses independent snapshots; snapshot times are disclosed. Counts and conversion rates are calculated independently, never by summing daily unique counts or averaging daily rates. Calendar timezone affects presets; fixed input timestamps retain their explicit offsets.
 
-The Library polls queued/running panels and renders the same completed data as the Explorer, with an additional comparison table when configured. Daily count projections remain independent. Entry-cohort periods that permit completion after the reporting end, incremental per-participant materialization, and durable input spooling for long-running retries are not implemented.
+The Library polls queued/running panels and renders the same completed data as the Explorer, with an additional comparison table when configured. Daily count projections remain independent. Entry-cohort periods that permit completion after the reporting end, and durable input spooling for long-running retries are not implemented.
 
 Validation: `npm run test:funnel-runs -- --load` runs isolated PostgreSQL acceptance plus a 150,000-person / 525,000-event synthetic published-index fixture, including a property-filtered four-step funnel, durable participants and cached reads. `FUNNEL_LOAD_PEOPLE=1000000` increases the fixture to one million participants. This measures the background query path, not ingestion throughput or production concurrency.
+
+
+### Incremental preprocessing for saved funnels
+
+Saving a Library event-funnel query subscribes it to a versioned definition. The
+identity is a hash of dataset, schema version, person/account unit, ordered steps,
+typed property filters and conversion window. Reporting dates, timezone and
+comparison presets are not part of that identity. Identical definitions share
+one projection. Up to 20 distinct subscribed definitions are allowed per source;
+unused definitions and their derived rows are removed by worker maintenance.
+Existing saved queries are registered by the worker in bounded batches. New
+definition registration briefly takes a SHARE lock on event/identity tables to
+finish in-flight publications before backfill starts; it does not hold this lock
+while processing history. Re-enabling uses the same barrier.
+
+The existing event index and original records remain the source of truth.
+Statement-level triggers enqueue distinct affected actors in the same transaction
+as index publication, corrections, deletion or identity changes. Irrelevant event
+names do not queue work. The dirty queue coalesces repeated changes with a version
+counter. It contains no separate event payloads and is durable across restarts.
+
+The dedicated funnel worker first backfills the dataset's retained history. It
+stores `(definition, actor, stage, started_at, reached_at)` occurrences for each
+valid ordered prefix. For a given end, the latest feasible start dominates earlier
+starts; later ends with an unchanged start are redundant. Distinct attempts are
+retained, including attempts that cross calendar boundaries. There is no daily
+unique-count summation and no enumeration of all possible event combinations.
+
+After initialization, a batch rebuilds the retained sequences of up to 500 dirty
+actors (including their aliases), using the existing actor indexes. This version
+replays each affected actor's retained history rather than resuming partial state
+across windows. An exceptionally active actor can therefore still be expensive.
+A repeatable-read reader and atomic writer publication prevent partial results.
+Conditional queue acknowledgement keeps changes that arrive during a snapshot
+queued for another pass. A process crash rolls back publication; the session lock
+is released and unacknowledged work survives. Failures back off and stop after
+three attempts; retrying the report also retries its failed preprocessing.
+
+Backfills and incremental batches use the same 120-second checked processing
+budget and 30-second statement limit as the existing engine. Progress for initial
+scans is exposed in pending report messages. One projection batch per schema runs
+at a time; the normal worker alternates projection work and report work. Ingestion
+never waits for a full projection rebuild to finish its queue acknowledgement.
+There is no guarantee of a fixed freshness delay under a growing backlog.
+
+A period report filters `started_at >= startsAt AND reached_at < endsAt`, groups
+by actor and counts the maximum reached stage. Counts are cached; participant
+pages read the occurrence projection directly using keyset pagination. The
+projection revision and dirty-queue guard are checked in the same SQL snapshot
+as the participant page. This avoids copying all participants for every period.
+Results based on a dirty or superseded projection return `invalidated`; request a
+new run. The current implementation waits for the dirty queue to drain before
+publishing a new period result. Raw-engine runs retain their existing participant
+storage and five-minute soft cache behavior.
+
+Every minute, maintenance considers up to 20 saved subscriptions in rotation and
+requests their configured current/comparison periods before a dashboard opens.
+Rolling boundaries still advance every five minutes. The cache has finite
+retention; arbitrary periods are computed from the projection on first use.
+Deleting the last subscriber stops upkeep and removes the unused projection on
+the next maintenance pass. Dataset permissions and current event retention apply
+to every read, including cached counts and participants. Retention cleanup also
+removes derived occurrences; projections do not extend raw-history access.
+
+Operational control and rollback:
+
+```sh
+npm run funnels:preprocessing -- --status
+npm run funnels:preprocessing -- --disable
+npm run funnels:preprocessing -- --enable
+```
+
+Disabling waits for active calculation locks, stops new dirty queue writes and
+routes queries through the original event engine. Re-enabling forces a rebuild
+because events received while disabled were not queued. To roll back the code,
+disable preprocessing first, then revert the implementation commit. The prior
+checkpoint is `a126b54`; the new tables are additive and can remain disabled. No
+original events or metric definitions need to be removed. Run these commands
+against the intended Warehouse database only; a code rollback is not a database
+restore. Deployment to any external environment is a separate operation.
+
+Validation and load measurement:
+
+```sh
+npm run test:funnel-projections
+npm run test:funnel-projections -- --load
+```
+
+The load fixture defaults to 150,000 actors and 525,000 indexed events. It measures
+the original path (read, compute, participant writes), initial backfill, new
+period queries, cached reads, and 100 real API events updating existing actors.
+Reports include occurrence storage and observed process RSS, not peak memory.
+Fixture creation is timed separately from analytics and is not an ingestion
+throughput measurement. The script creates and removes an isolated local schema.
+`FUNNEL_LOAD_PEOPLE` can change fixture size; only sizes actually run constitute
+validation. Entry-cohort periods, arbitrary unsaved-funnel precomputation and
+constant-cost updates for actors with unbounded history are not implemented.

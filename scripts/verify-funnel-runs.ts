@@ -1,3 +1,4 @@
+import {processFunnelProjection} from '../src/server/metrics/funnel-projections';
 import pg from 'pg';
 import assert from 'node:assert/strict';
 import {performance} from 'node:perf_hooks';
@@ -37,7 +38,7 @@ try{
  const denied={...grants,metrics:{...grants.metrics,eventRead:[]}};const state=(await call('integrations')).apps.find((a:{id:string})=>a.id===app.id);await call('integrations',{action:'update',id:app.id,revision:state.revision,name:state.name,permissions:denied});await call('metrics/event-funnel-runs/'+corrected.runId,{},token,403);
  checks.push('Corrections invalidate cached participants immediately; cached reads recheck current grants');
  const saved=await call('metrics/library',{name:'Comparison',kind:'query',visibility:'private',config:{eventFunnel:{query:q,period:'fixed',compare:'custom',compareStartsAt:at(0),compareEndsAt:at(3)},chart:{kind:'funnel',stageTotals:true}}});
- let dashboard=await call('metrics/library-run',{id:saved.id});while(dashboard.panels[0].processing){while(await processFunnelRun(pool)){}dashboard=await call('metrics/library-run',{id:saved.id});}
+ let dashboard=await call('metrics/library-run',{id:saved.id});while(dashboard.panels[0].processing){while(await processFunnelProjection(pool)){}while(await processFunnelRun(pool)){}dashboard=await call('metrics/library-run',{id:saved.id});}
  assert.deepEqual(dashboard.panels[0].data.rows.map((r:{value:string;previous:string})=>[r.value,r.previous]),[['3','3'],['1','0']]);
  checks.push('Library reports queue and expose independent comparison-period counts');
 

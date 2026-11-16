@@ -15,6 +15,6 @@ export function EventFunnelControls({value,onChange}:{value:SavedEventFunnel;onC
   <label>Ordered steps (one event name per line)<Textarea rows={5} value={q.steps.map(s=>s.name).join('\n')} onChange={e=>onChange({...value,query:{...q,steps:e.target.value.split('\n').map((name,i)=>({...q.steps[i],name}))}})}/></label>
   <label>Count unique<SelectControl value={q.unit} onValueChange={unit=>onChange({...value,query:{...q,unit:unit as 'person'|'account'}})}><option value="person">People</option><option value="account">Accounts</option></SelectControl></label>
   <label>Conversion window (hours)<Input type="number" min="0.001" max="2160" step="any" value={q.windowSeconds/3600} onChange={e=>onChange({...value,query:{...q,windowSeconds:Math.round(Number(e.target.value)*3600)}})}/></label>
-  <p className="text-xs text-muted-foreground">All steps must occur within the selected period. Reports run in background and reuse completed results. Rolling periods refresh on five-minute boundaries. Daily event counts remain a separate projection.</p>
+  <p className="text-xs text-muted-foreground">All steps must occur within the selected period. Saving starts background preprocessing of retained events. New events update affected people or accounts automatically. Reports reuse these sequences across periods. Rolling periods refresh on five-minute boundaries. Daily event counts remain a separate projection.</p>
  </div>;
 }

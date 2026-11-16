@@ -1,3 +1,4 @@
+import {funnelProjectionSchema} from '../metrics/funnel-projection-storage';
 import {funnelSchema} from '../metrics/funnel-storage';
 import {eventMetricSchema} from '../metrics/event-metric-storage';
 import pg from 'pg';
@@ -59,5 +60,5 @@ CREATE TABLE IF NOT EXISTS metric_purges(id uuid PRIMARY KEY,metric_id uuid NOT 
 CREATE INDEX IF NOT EXISTS metric_purge_history ON metric_purges(metric_id,created_at DESC);
 CREATE TABLE IF NOT EXISTS metric_purged_records(source_id uuid NOT NULL,record_id text NOT NULL,metric_id uuid NOT NULL,version integer NOT NULL,purge_id uuid NOT NULL REFERENCES metric_purges,PRIMARY KEY(source_id,record_id,metric_id,version));
 CREATE TABLE IF NOT EXISTS metric_activity(id uuid PRIMARY KEY,metric_id uuid,actor_id uuid,action text NOT NULL,detail jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now());
-`);await c.query(eventSchema);await c.query(funnelSchema);await c.query('COMMIT');}catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}}
+`);await c.query(eventSchema);await c.query(funnelSchema);await c.query(funnelProjectionSchema);await c.query('COMMIT');}catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}}
 export async function transaction<T>(pool:pg.Pool,fn:(c:pg.PoolClient)=>Promise<T>){const c=await pool.connect();try{await c.query('BEGIN');const result=await fn(c);await c.query('COMMIT');return result;}catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}}

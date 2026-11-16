@@ -28,7 +28,9 @@
     "test:load-events": "node --env-file-if-exists=.env --import tsx scripts/load-events.ts",
     "test:event-reporting": "node --env-file-if-exists=.env --import tsx scripts/verify-event-reporting.ts",
     "worker:funnels": "node --env-file-if-exists=.env --import tsx scripts/funnel-worker.ts",
-    "test:funnel-runs": "node --env-file-if-exists=.env --import tsx scripts/verify-funnel-runs.ts"
+    "test:funnel-runs": "node --env-file-if-exists=.env --import tsx scripts/verify-funnel-runs.ts",
+    "test:funnel-projections": "node --env-file-if-exists=.env --import tsx scripts/verify-funnel-projections.ts",
+    "funnels:preprocessing": "node --env-file-if-exists=.env --import tsx scripts/funnel-preprocessing.ts"
   },
   "dependencies": {
     "@shpyrd/ui": "file:vendor/shpyrd-ui",
