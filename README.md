@@ -1,5 +1,8 @@
 # zbucket
 
+Public repository: [shpyrd-io/zbucket](https://github.com/shpyrd-io/zbucket).
+The existing Shpyrd deployment project remains `warehouse` (Warehouse).
+
 Previously named Warehouse. The product, SDKs and new configuration examples now
 use `zbucket`. See [rename compatibility](ops/renaming.md) for existing clients,
 persisted data and deployment identifiers.

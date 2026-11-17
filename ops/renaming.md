@@ -39,11 +39,19 @@ the existing data; `.env.example` uses `zbucket` only as a fresh-install example
 The repository remains in its current checkout directory. Historical experiment
 reports and screenshots retain the names recorded when those measurements ran.
 
+## Repository
+
+The public GitHub repository is
+[`shpyrd-io/zbucket`](https://github.com/shpyrd-io/zbucket). The existing local
+checkout had no Git remote; the new repository preserves its commit history and
+is configured as `origin`.
+
 ## Deployment
 
 The existing Shpyrd project slug, trusted origin, internal service URL and public
 hostname remain actual infrastructure identifiers. `shpyrd.yaml` therefore still
 targets `warehouse`, while its application configuration uses `ZBUCKET_ACCESS`.
-No remote project, repository, DNS record or deployment is changed by this rename.
+The Shpyrd project remains Warehouse (`warehouse`). Publishing the GitHub
+repository does not rename that project, change DNS or deploy the application.
 An infrastructure rename must migrate those resources together and preserve the
 database, volumes, network grants, login audience and callers' endpoint settings.
