@@ -5,7 +5,7 @@ import {useQuery,useMutation,useQueryClient} from '@tanstack/react-query';
 import {Button} from '@shpyrd/ui/components/button';
 import {Input} from '@shpyrd/ui/components/input';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@shpyrd/ui/components/dialog';
-import {get,post} from '@/api/warehouse';
+import {get,post} from '@/api/zbucket';
 import type {EventDataset} from '@/models/metrics/events';
 import type {Metric} from '@/models/metrics/types';
 type Job={metric_id:string;key:string;source_id:string;dataset_key:string;status:string;scanned:string;inserted:string;skipped:string;last_error:string|null};

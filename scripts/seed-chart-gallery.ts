@@ -13,7 +13,7 @@ import type {Metric,MetricQuery} from '../src/models/metrics/types';
 assert.equal(accessMode(),'local','The chart gallery is a local demonstration only.');
 const pool=await database();
 try {
- assert.equal((await pool.query('select current_database() name')).rows[0].name,'shpyrd_warehouse','Use the local Warehouse database.');
+ assert.ok(['zbucket','shpyrd_warehouse'].includes((await pool.query('select current_database() name')).rows[0].name),'Use the local zbucket database.');
  const actor=await authenticate(pool,new Request('http://localhost:4332/'));
  assert.equal(actor.kind,'user');
  const specs=[

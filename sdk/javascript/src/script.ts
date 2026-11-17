@@ -1,3 +1,3 @@
-import {warehouse} from './browser';
+import {zbucket} from './browser';
 // Explicit initialization keeps consent and authenticated context under application control.
-Object.assign(window,{warehouse});
+Object.assign(window,{zbucket,warehouse:zbucket});

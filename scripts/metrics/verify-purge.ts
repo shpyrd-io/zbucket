@@ -16,7 +16,7 @@ import type {PurgeScope} from '../../src/models/metrics/purge';
 delete process.env.VOYAGE_API_KEY;
 const original=process.env.DATABASE_URL!,schema='purge_test_'+Date.now(),root=new pg.Pool({connectionString:original});
 await root.query(`CREATE SCHEMA ${schema}`);
-const url=new URL(original);url.searchParams.set('options',`-c search_path=${schema},public`);process.env.DATABASE_URL=url.toString();process.env.WAREHOUSE_ACCESS='local';
+const url=new URL(original);url.searchParams.set('options',`-c search_path=${schema},public`);process.env.DATABASE_URL=url.toString();process.env.ZBUCKET_ACCESS='local';
 const {database}=await import('../../src/server/database');
 const pool=await database(),owner=randomUUID(),actor:Principal={kind:'user',id:owner,name:'Purge acceptance',admin:true};
 const day=new Date();day.setUTCHours(0,0,0,0);day.setUTCDate(day.getUTCDate()-3);

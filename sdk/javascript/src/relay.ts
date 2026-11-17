@@ -1,5 +1,5 @@
-// Node-only. Never include this entry point or the Warehouse credential in a browser bundle.
-import {WarehouseHttpError} from './server.js';
+// Node-only. Never include this entry point or the zbucket credential in a browser bundle.
+import {ZbucketHttpError} from './server.js';
 import {createHmac, randomUUID, timingSafeEqual} from 'node:crypto';
 import {validProperties, type CaptureEvent} from './shared.js';
 export {browserDatasetSchema, browserEventMapping} from './shared.js';
@@ -11,6 +11,7 @@ type Options = {client:Backend; datasetKey:string; schemaVersion:number; signing
  cookieName?:string; contextTtlSeconds?:number};
 export function createAnalyticsRelay(options:Options){
  if(options.signingSecret.length<32)throw new Error('Use a dedicated random signing secret of at least 32 characters.');
+ // The stable cookie name preserves anonymous identities and previously signed contexts.
  const origin=new URL(options.origin).origin,secure=new URL(origin).protocol==='https:',cookieName=options.cookieName??'warehouse_analytics';
  if(!/^[a-zA-Z0-9_]+$/.test(cookieName))throw new Error('Invalid cookie name.');
  const ttl=options.contextTtlSeconds??86400;
@@ -25,10 +26,10 @@ export function createAnalyticsRelay(options:Options){
  };
  const response=(body:unknown,status=200,headers:Record<string,string>={})=>Response.json(body,{status,headers:{'Cache-Control':'no-store',...headers}});
  const upstreamFailure=(error:unknown)=>{
-  const status=error instanceof WarehouseHttpError?error.status:Number(/Warehouse HTTP (\d+)/.exec(String(error))?.[1]);
+  const status=error instanceof ZbucketHttpError?error.status:Number(/(?:zbucket|Warehouse) HTTP (\d+)/.exec(String(error))?.[1]);
   const code=[400,403,409,413,422,429].includes(status)?status:503;
-  const retryAfter=error instanceof WarehouseHttpError?error.retryAfter:null;
-  return response({error:code===429?'Warehouse rate limit reached. Retry later.':'Warehouse rejected or could not accept this request.'},code,code===429?{'Retry-After':retryAfter??'60'}:{});
+  const retryAfter=error instanceof ZbucketHttpError?error.retryAfter:null;
+  return response({error:code===429?'zbucket rate limit reached. Retry later.':'zbucket rejected or could not accept this request.'},code,code===429?{'Retry-After':retryAfter??'60'}:{});
  };
  return async function handle(request:Request):Promise<Response>{
   if(request.method!=='POST')return response({error:'Use POST.'},405);

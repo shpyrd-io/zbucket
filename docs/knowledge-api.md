@@ -11,20 +11,20 @@ index: true
 
 # Knowledge API specification and examples
 
-Applications publish and retrieve Markdown documents from shared, permissioned collections. The same Warehouse integration credential used for metrics can access Knowledge when explicitly granted. See **Integrating an application with Warehouse** for API origin, Shpyrd gateway access, credentials and general errors.
+Applications publish and retrieve Markdown documents from shared, permissioned collections. The same zbucket integration credential used for metrics can access Knowledge when explicitly granted. See **Integrating an application with zbucket** for API origin, Shpyrd gateway access, credentials and general errors.
 
-All requests below are server-to-server, relative to `/api/v1`, with `Authorization: Bearer $WAREHOUSE_TOKEN`. POSTs require `Content-Type: application/json`. The public browser hostname requires Shpyrd login; a Warehouse token alone cannot bypass that gateway.
+All requests below are server-to-server, relative to `/api/v1`, with `Authorization: Bearer $ZBUCKET_TOKEN`. POSTs require `Content-Type: application/json`. The public browser hostname requires Shpyrd login; a zbucket token alone cannot bypass that gateway.
 
 ## Internal API origin
 
-For this Warehouse installation, execute the examples from an allowed Shpyrd project using:
+For this zbucket installation, execute the examples from an allowed Shpyrd project using:
 
 ```sh
-export WAREHOUSE_URL='http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local'
-# Inject WAREHOUSE_TOKEN from the caller's secret store (wh_…).
+export ZBUCKET_URL='http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local'
+# Inject ZBUCKET_TOKEN from the caller's secret store (wh_…).
 ```
 
-An administrator must authorize the caller with `shpyrd allow add project <caller-project> --project warehouse`. The HTTP service is internal to the cluster. The public HTTPS hostname is for browser login and does not accept a Warehouse token as a substitute for Shpyrd sign-in. Neither the internal URL nor network permission replaces the API token and its grants.
+An administrator must authorize the caller with `shpyrd allow add project <caller-project> --project warehouse`. The HTTP service is internal to the cluster. The public HTTPS hostname is for browser login and does not accept a zbucket token as a substitute for Shpyrd sign-in. Neither the internal URL nor network permission replaces the API token and its grants.
 
 ## Interface and permissions
 
@@ -52,8 +52,8 @@ A document's stable identity is `(collection, key)`. Browser links and exact API
 For collection `general` and key `copy_guidelines`, link to `/knowledge/general/copy_guidelines` on the browser origin. Browser sign-in and existing access rules still apply. API clients can resolve the same document without knowing its generated UUID:
 
 ```sh
-curl --fail-with-body -G "$WAREHOUSE_URL/api/v1/knowledge/documents/by-key" \
-  -H "Authorization: Bearer $WAREHOUSE_TOKEN" \
+curl --fail-with-body -G "$ZBUCKET_URL/api/v1/knowledge/documents/by-key" \
+  -H "Authorization: Bearer $ZBUCKET_TOKEN" \
   --data-urlencode 'collection=general' \
   --data-urlencode 'key=copy_guidelines'
 ```
@@ -82,13 +82,13 @@ Assume the administrator created collection `finance`, granted this integration 
 ```
 
 ```sh
-curl --fail-with-body "$WAREHOUSE_URL/api/v1/knowledge/documents" \
-  -H "Authorization: Bearer $WAREHOUSE_TOKEN" \
+curl --fail-with-body "$ZBUCKET_URL/api/v1/knowledge/documents" \
+  -H "Authorization: Bearer $ZBUCKET_TOKEN" \
   -H "Content-Type: application/json" \
   --data-binary @document.json
 ```
 
-The response is the complete persisted document, including generated `id`, `revision` (1 initially), `active`, `owner_app_id`, `index_status` and timestamps. Record the returned ID and revision. `source_url` is attribution metadata; Warehouse does **not** fetch that URL. Send the actual document body in `content`.
+The response is the complete persisted document, including generated `id`, `revision` (1 initially), `active`, `owner_app_id`, `index_status` and timestamps. Record the returned ID and revision. `source_url` is attribution metadata; zbucket does **not** fetch that URL. Send the actual document body in `content`.
 
 ### Write fields
 
@@ -116,8 +116,8 @@ The API uses `source_type` and `source_url` (snake case). The repository directo
 ## List and paginate documents
 
 ```sh
-curl --fail-with-body -G "$WAREHOUSE_URL/api/v1/knowledge/documents" \
-  -H "Authorization: Bearer $WAREHOUSE_TOKEN" \
+curl --fail-with-body -G "$ZBUCKET_URL/api/v1/knowledge/documents" \
+  -H "Authorization: Bearer $ZBUCKET_TOKEN" \
   --data-urlencode 'collection=finance'
 ```
 
@@ -146,8 +146,8 @@ There are no server-side category, tag, source-type, arbitrary sort or custom li
 ## Search text and meaning
 
 ```sh
-curl --fail-with-body -G "$WAREHOUSE_URL/api/v1/knowledge/documents" \
-  -H "Authorization: Bearer $WAREHOUSE_TOKEN" \
+curl --fail-with-body -G "$ZBUCKET_URL/api/v1/knowledge/documents" \
+  -H "Authorization: Bearer $ZBUCKET_TOKEN" \
   --data-urlencode 'collection=finance' \
   --data-urlencode 'q=how do I recover a missed bank balance observation?'
 ```
@@ -165,8 +165,8 @@ An assistant should answer from retrieved document content, distinguish examples
 ## Read a document and edit safely
 
 ```sh
-curl --fail-with-body "$WAREHOUSE_URL/api/v1/knowledge/documents/$DOCUMENT_ID" \
-  -H "Authorization: Bearer $WAREHOUSE_TOKEN"
+curl --fail-with-body "$ZBUCKET_URL/api/v1/knowledge/documents/$DOCUMENT_ID" \
+  -H "Authorization: Bearer $ZBUCKET_TOKEN"
 ```
 
 A document contains `id`, `collection`, `key`, `title`, `content`, `category`, `tags`, `source_type`, `source_url`, `revision`, `active`, `owner_app_id`, `index_status`, `updated_at` and other server-maintained indexing/creation metadata. Do not send server-maintained fields to change ownership or index status.
@@ -193,11 +193,11 @@ The response now has revision 2. If somebody already changed it, 409 means **rea
 ## History and restore
 
 ```sh
-curl --fail-with-body "$WAREHOUSE_URL/api/v1/knowledge/documents/$DOCUMENT_ID/history" \
-  -H "Authorization: Bearer $WAREHOUSE_TOKEN"
+curl --fail-with-body "$ZBUCKET_URL/api/v1/knowledge/documents/$DOCUMENT_ID/history" \
+  -H "Authorization: Bearer $ZBUCKET_TOKEN"
 ```
 
-The result is `{document,versions}`. Each version contains `revision`, a full `document` snapshot, `reason` and `created_at`, ordered newest first. Warehouse retains the **current version plus up to 20 previous revisions**. This is bounded editing history, not indefinite archival storage. A historical version no longer retained cannot be restored through this API.
+The result is `{document,versions}`. Each version contains `revision`, a full `document` snapshot, `reason` and `created_at`, ordered newest first. zbucket retains the **current version plus up to 20 previous revisions**. This is bounded editing history, not indefinite archival storage. A historical version no longer retained cannot be restored through this API.
 
 To restore the original text after the example update, POST:
 
@@ -236,7 +236,7 @@ The explicit archive action requires the archive permission. Current `save` also
 
 A successful write stores Markdown and current chunks transactionally. Lexical search uses the updated title/body immediately. The worker generates semantic embeddings afterward; inspect `index_status` (`pending`, `retrying`, `indexed`, `failed`) on the current document. A 200 write response does not mean embeddings are already complete.
 
-Voyage receives **document title/body chunks** for indexing and **search query text** for retrieval. Warehouse stores 1,024-dimensional vectors and the embedding model in PostgreSQL/pgvector. Credentials and metric measurement tables are not included. The current deployment uses `voyage-4`. Collection grants restrict retrieval candidates before results are returned. Do not publish content to a shared collection unless its intended readers and semantic-processing policy permit that content.
+Voyage receives **document title/body chunks** for indexing and **search query text** for retrieval. zbucket stores 1,024-dimensional vectors and the embedding model in PostgreSQL/pgvector. Credentials and metric measurement tables are not included. The current deployment uses `voyage-4`. Collection grants restrict retrieval candidates before results are returned. Do not publish content to a shared collection unless its intended readers and semantic-processing policy permit that content.
 
 Updated revisions replace the previous searchable chunks; archived documents are excluded. A provider failure does not discard the document; text search remains available and indexing retries are bounded. An administrator can request `POST /api/v1/knowledge/reindex` with `{}` to requeue all active documents. A machine token cannot do this. Changing the configured embedding model requires reindexing; vectors from another model are excluded from semantic retrieval.
 

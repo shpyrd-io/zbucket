@@ -1,11 +1,11 @@
 # Local analytics collection demo
 
-Fictional customer journeys sent by the actual browser SDK to the same-origin relay, then the Warehouse HTTP API and PostgreSQL worker. This is a simulation, not customer data or a capacity benchmark.
+Fictional customer journeys sent by the actual browser SDK to the same-origin relay, then the zbucket HTTP API and PostgreSQL worker. This is a simulation, not customer data or a capacity benchmark.
 
-1. Run `npm run dev` with a local Warehouse PostgreSQL database and local access.
+1. Run `npm run dev` with a local zbucket PostgreSQL database and local access.
 2. Run `node --import tsx examples/analytics-demo/server.mjs` in another terminal.
 3. Open http://127.0.0.1:4333 and click **Simulate 10 customer journeys** once.
-4. Open Warehouse at http://127.0.0.1:4332/metrics/events and select the newly created **Demo app** dataset.
+4. Open zbucket at http://127.0.0.1:4332/metrics/events and select the newly created **Demo app** dataset.
 5. Run a **People** funnel with `app_opened`, `signup_completed`, `feature_used`, `report_exported`. Expected counts: **10 → 7 → 5 → 3**.
 6. Filter the timeline by person `user:person-1` (four events, including the linked anonymous opening) or account `acme-1` (three events after signup).
 

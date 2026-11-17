@@ -1,4 +1,4 @@
-import {WarehouseHttpError} from './server';
+import {ZbucketHttpError} from './server';
 import {describe,it,expect,vi} from 'vitest';
 import {createAnalyticsRelay} from './relay';
 import type {Context} from './shared';
@@ -42,8 +42,8 @@ describe('first-party relay',()=>{
 
 it('preserves upstream quota and retry delay for capture and identity linking',async()=>{
  const s=setup(),context=await(await s.send({action:'context'})).json();
- s.client.events.mockRejectedValueOnce(new WarehouseHttpError(429,'Quota reached','17'));
+ s.client.events.mockRejectedValueOnce(new ZbucketHttpError(429,'Quota reached','17'));
  const r=await s.send({action:'capture',events:[event(context)]});expect(r.status).toBe(429);expect(r.headers.get('retry-after')).toBe('17');
- s.login({userId:'ana'});s.client.identifyEventPerson.mockRejectedValueOnce(new WarehouseHttpError(429,'Quota reached','23'));
+ s.login({userId:'ana'});s.client.identifyEventPerson.mockRejectedValueOnce(new ZbucketHttpError(429,'Quota reached','23'));
  const identity=await s.send({action:'context'});expect(identity.status).toBe(429);expect(identity.headers.get('retry-after')).toBe('23');
 });

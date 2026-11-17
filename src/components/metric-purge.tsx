@@ -5,7 +5,7 @@ import {Button} from '@shpyrd/ui/components/button';
 import {Input} from '@shpyrd/ui/components/input';
 import {Textarea} from '@shpyrd/ui/components/textarea';
 import {Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle} from '@shpyrd/ui/components/dialog';
-import {post} from '@/api/warehouse';
+import {post} from '@/api/zbucket';
 import type {Metric} from '@/models/metrics/types';
 import type {PurgePreview, PurgeResult} from '@/models/metrics/purge';
 

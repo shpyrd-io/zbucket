@@ -4,7 +4,7 @@ import {mkdir,writeFile} from 'node:fs/promises';
 import {performance} from 'node:perf_hooks';
 delete process.env.VOYAGE_API_KEY;
 const url=new URL(process.env.DATABASE_URL!),schema='events_test_'+Date.now(),root=new pg.Pool({connectionString:url.toString()});
-await root.query(`CREATE SCHEMA ${schema}`);url.searchParams.set('options',`-c search_path=${schema},public`);process.env.DATABASE_URL=url.toString();process.env.WAREHOUSE_ACCESS='local';
+await root.query(`CREATE SCHEMA ${schema}`);url.searchParams.set('options',`-c search_path=${schema},public`);process.env.DATABASE_URL=url.toString();process.env.ZBUCKET_ACCESS='local';
 const {GET,POST}=await import('../app/api/v1/[...operation]/route');const {database}=await import('../src/server/database');const {processMetricBatch}=await import('../src/server/metrics/worker');const {maintainMetricRetention}=await import('../src/server/metrics/rollups');
 const checks:string[]=[],timings:Record<string,number>={};let pool:pg.Pool|undefined;
 async function call(path:string,body?:unknown,token?:string,status=200){const headers:Record<string,string>={};if(token)headers.Authorization='Bearer '+token;if(body)headers['Content-Type']='application/json';const r=await(body?POST:GET)(new Request('http://localhost/api/v1/'+path,{method:body?'POST':'GET',headers,body:body?JSON.stringify(body):undefined}),{params:Promise.resolve({operation:path.split('?')[0].split('/')})});const value=await r.json();assert.equal(r.status,status,`${path}: ${JSON.stringify(value)}`);return value;}

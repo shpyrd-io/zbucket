@@ -21,7 +21,7 @@ function example(name:string,replacements:Record<string,string>={}){
  return JSON.parse(value);
 }
 const url=new URL(process.env.DATABASE_URL!),schema='warehouse_docs_'+Date.now(),root=new pg.Pool({connectionString:url.toString()});
-await root.query(`CREATE SCHEMA ${schema}`);url.searchParams.set('options',`-c search_path=${schema},public`);process.env.DATABASE_URL=url.toString();process.env.WAREHOUSE_ACCESS='local';
+await root.query(`CREATE SCHEMA ${schema}`);url.searchParams.set('options',`-c search_path=${schema},public`);process.env.DATABASE_URL=url.toString();process.env.ZBUCKET_ACCESS='local';
 const {GET,POST,PATCH,DELETE}=await import('../app/api/v1/[...operation]/route');const {database}=await import('../src/server/database');const {processMetricBatch}=await import('../src/server/metrics/worker');
 async function call(path:string,body?:unknown,token?:string,status=200,method?:'PATCH'|'DELETE'){const headers:Record<string,string>={};if(token)headers.Authorization='Bearer '+token;if(body)headers['Content-Type']='application/json';const response=await(method==='PATCH'?PATCH:method==='DELETE'?DELETE:body?POST:GET)(new Request('http://localhost/api/v1/'+path,{method:method??(body?'POST':'GET'),headers,body:body?JSON.stringify(body):undefined}),{params:Promise.resolve({operation:path.split('?')[0].split('/')})});const result=await response.json();assert.equal(response.status,status,`${path}: ${JSON.stringify(result)}`);return result;}
 try{
@@ -88,7 +88,7 @@ try{
  assert.equal((await call('knowledge/documents?collection=finance',undefined,token)).documents.length,0);
  assert.equal((await call('knowledge/documents/'+doc.id,undefined,token)).active,false);
  checks.push('Guide document CRUD workflow: create, retry, search, optimistic conflict, history, restore and reversible archive');
- await call('integrations',{action:'collection',key:'warehouse',name:'Warehouse'});
+ await call('integrations',{action:'collection',key:'warehouse',name:'zbucket'});
  for(const key of ['warehouse.architecture','warehouse.deployment','unrelated-note'])await call('knowledge/documents',{collection:'warehouse',key,title:key,content:'Existing document'});
  const importer=spawnSync(process.execPath,['--import','tsx','scripts/import-knowledge.ts'],{env:process.env,cwd:process.cwd(),encoding:'utf8'});assert.equal(importer.status,0,importer.stderr);assert.match(importer.stdout,/Imported 3 documents; archived 2/);
  const active=(await call('knowledge/documents?collection=warehouse')).documents.map((d:{key:string})=>d.key);

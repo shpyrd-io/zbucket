@@ -1,9 +1,11 @@
+# Existing infrastructure identity; the application is now branded zbucket.
+# Renaming a deployment/hostname requires updating its actual Shpyrd resources.
 project: warehouse
 exposure: external
 globals: false
 env:
   NODE_ENV: production
-  WAREHOUSE_ACCESS: shpyrd
+  ZBUCKET_ACCESS: shpyrd
   APP_ORIGIN: https://platform-warehouse.shpyrd.app
   VOYAGE_MODEL: voyage-4
 build:

@@ -22,7 +22,7 @@ export function SelectControl({ value: controlledValue, defaultValue = "", onVal
     const options = Children.toArray(children).filter(isValidElement<Option>).map(child => child.props);
     const empty = options.find(option => String(option.value ?? "") === "");
     const allowEmpty = !!empty && !empty.disabled && !required;
-    const emptyKey = "__warehouse_none__";
+    const emptyKey = "__zbucket_none__";
     return <Select value={value || (allowEmpty ? emptyKey : "")} onValueChange={next => update(next === emptyKey ? "" : next)} required={required} disabled={disabled} name={name}>
         <SelectTrigger className={`w-full min-w-0 ${className}`} {...triggerProps}><SelectValue placeholder={empty?.children ?? "Select an option"}/></SelectTrigger>
         <SelectContent position="popper" className="max-w-[calc(100vw-2rem)]">

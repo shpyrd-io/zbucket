@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "shpyrd-warehouse"
+name = "shpyrd-zbucket"
 version = "0.1.0"
-description = "Server-side Python client for Warehouse Metrics and Knowledge"
+description = "Server-side Python client for zbucket Metrics and Knowledge"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
@@ -14,4 +14,5 @@ dependencies = []
 where = ["src"]
 
 [tool.setuptools.package-data]
+shpyrd_zbucket = ["py.typed"]
 shpyrd_warehouse = ["py.typed"]

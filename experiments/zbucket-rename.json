@@ -1,0 +1,74 @@
+{
+  "at": "2026-11-17T01:07:50.770Z",
+  "scope": "Local rebrand; existing database and deployment identifiers preserved",
+  "before": {
+    "counts": {
+      "integrations": 4,
+      "credentials": 1,
+      "events": 25,
+      "metrics": 15
+    },
+    "documents": [
+      {
+        "id": "01a12088-3335-703e-ae04-b23b7307e688",
+        "key": "warehouse.integrations",
+        "revision": 5
+      },
+      {
+        "id": "01a122c1-4b74-761e-9f12-de271da85332",
+        "key": "warehouse.knowledge-api",
+        "revision": 2
+      },
+      {
+        "id": "01a122c1-4b7e-7110-870b-14306cf52bc5",
+        "key": "warehouse.metrics-api",
+        "revision": 3
+      }
+    ]
+  },
+  "after": {
+    "counts": {
+      "integrations": 4,
+      "credentials": 1,
+      "events": 25,
+      "metrics": 15
+    },
+    "documents": [
+      {
+        "id": "01a12088-3335-703e-ae04-b23b7307e688",
+        "key": "warehouse.integrations",
+        "revision": 6
+      },
+      {
+        "id": "01a122c1-4b74-761e-9f12-de271da85332",
+        "key": "warehouse.knowledge-api",
+        "revision": 3
+      },
+      {
+        "id": "01a122c1-4b7e-7110-870b-14306cf52bc5",
+        "key": "warehouse.metrics-api",
+        "revision": 4
+      }
+    ]
+  },
+  "collection": {
+    "key": "warehouse",
+    "name": "zbucket documentation"
+  },
+  "sdkCompatibility": {
+    "sameScriptAssets": true,
+    "sharedBrowserGlobals": true,
+    "sharedServerClasses": true
+  },
+  "validation": {
+    "typescriptTests": 150,
+    "pythonTests": 19,
+    "postgresqlAcceptance": true,
+    "build": true
+  },
+  "health": {
+    "status": "ok",
+    "app": "zbucket"
+  },
+  "visualCheck": "Not performed: browser tool URL policy rejected page observation."
+}

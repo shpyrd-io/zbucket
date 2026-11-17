@@ -1,6 +1,6 @@
 ---
 id: warehouse.integrations
-title: Integrating an application with Warehouse
+title: Integrating an application with zbucket
 sourceType: reference
 policyStatus: observed
 collection: warehouse
@@ -9,15 +9,15 @@ tags: [api, authentication, permissions, metrics, knowledge]
 index: true
 ---
 
-# Integrating an application with Warehouse
+# Integrating an application with zbucket
 
-Warehouse stores measured company data and searchable documents. Each application uses **one integration and one `wh_` credential type** for its permitted Metrics and Knowledge operations. Permissions are deny-by-default. A CRM, financial service and reporting app can share the repository without sharing credentials.
+zbucket stores measured company data and searchable documents. Each application uses **one integration and one `wh_` credential type** for its permitted Metrics and Knowledge operations. Permissions are deny-by-default. A CRM, financial service and reporting app can share the repository without sharing credentials.
 
 Use the **Metrics API specification and examples** for metric setup, observations, events, source aggregates, corrections and queries. Use the **Knowledge API specification and examples** for document publication, hybrid search, revisions and archival. Those guides describe the implemented API, not additional capabilities an assistant can assume.
 
 ## 1. Establish connectivity
 
-The application is at `https://platform-warehouse.shpyrd.app`, with internet exposure and restricted Shpyrd login. **The public browser URL is not automatically a machine API URL.** A `wh_` token authorizes requests inside Warehouse; it does not bypass the Shpyrd login gateway.
+The application is at `https://platform-warehouse.shpyrd.app`, with internet exposure and restricted Shpyrd login. **The public browser URL is not automatically a machine API URL.** A `wh_` token authorizes requests inside zbucket; it does not bypass the Shpyrd login gateway.
 
 For another Shpyrd project, an administrator grants its network connection with:
 
@@ -25,15 +25,15 @@ For another Shpyrd project, an administrator grants its network connection with:
 shpyrd allow add project <caller-project> --project warehouse
 ```
 
-Then configure that backend with **`http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local`** and its scoped `wh_` token. This is the verified `web` service on port 80 in this Warehouse installation. It resolves only inside the Shpyrd Kubernetes cluster; it is not a browser or external-client URL. Internal service traffic uses HTTP; internet-facing machine ingress must use HTTPS. An external producer needs an explicitly configured machine ingress that preserves the bearer header. Do not disable the application's login protection or send a secret to a login redirect. A redirect to login or an HTML response means connectivity/authentication at the gateway must be resolved first.
+Then configure that backend with **`http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local`** and its scoped `wh_` token. This is the verified `web` service on port 80 in this zbucket installation. It resolves only inside the Shpyrd Kubernetes cluster; it is not a browser or external-client URL. Internal service traffic uses HTTP; internet-facing machine ingress must use HTTPS. An external producer needs an explicitly configured machine ingress that preserves the bearer header. Do not disable the application's login protection or send a secret to a login redirect. A redirect to login or an HTML response means connectivity/authentication at the gateway must be resolved first.
 
 Every shell example in these guides assumes:
 
 ```sh
 # Run from an allowed Shpyrd project inside the same cluster.
-# Do not add /api/v1 to WAREHOUSE_URL; examples include it.
-export WAREHOUSE_URL='http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local'
-# Inject WAREHOUSE_TOKEN from the consuming backend's secret store.
+# Do not add /api/v1 to ZBUCKET_URL; examples include it.
+export ZBUCKET_URL='http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local'
+# Inject ZBUCKET_TOKEN from the consuming backend's secret store.
 ```
 
 For this installation, Metrics requests use `http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local/api/v1/metrics/...` and Knowledge requests use `http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local/api/v1/knowledge/...`. A recreated project can have a different namespace; verify the service rather than reusing an old URL.
@@ -41,8 +41,8 @@ For this installation, Metrics requests use `http://web.p-996iywzafh9ur616c0nj6y
 Use HTTPS for internet traffic. Keep tokens on the backend, never in browser code, URLs or source control. The request format is:
 
 ```sh
-curl --fail-with-body "$WAREHOUSE_URL/api/v1/metrics/catalog" \
-  -H "Authorization: Bearer $WAREHOUSE_TOKEN"
+curl --fail-with-body "$ZBUCKET_URL/api/v1/metrics/catalog" \
+  -H "Authorization: Bearer $ZBUCKET_TOKEN"
 ```
 
 ## 2. Create an integration and grant only what it needs
@@ -100,13 +100,13 @@ Token requests check the integration's current permissions, active state, token 
 
 ## 4. Operate the integration
 
-- All application routes use `/api/v1`. Use `Authorization: Bearer $WAREHOUSE_TOKEN`; JSON POSTs require `Content-Type: application/json`.
+- All application routes use `/api/v1`. Use `Authorization: Bearer $ZBUCKET_TOKEN`; JSON POSTs require `Content-Type: application/json`.
 - Metrics publishing returns **202 Accepted** plus a receipt. Poll the receipt until completed before expecting the aggregate to include it.
 - Document writes return **200** with the current document/revision. Text search is available immediately; semantic indexing runs asynchronously.
 - The body limit is **5 MiB**. Metrics additionally limit batches to **1,000 records** and event fan-out to **100,000 projections**.
 - General operations share **240 authenticated requests per minute per integration**. `POST /api/v1/metrics/events` and `POST /api/v1/metrics/event-identify` share a separate budget of **2,400 requests and 240,000 submitted events per minute**, shared across credentials and replicas. Retries count toward both budgets. Event publishing and identity linking do not consume the general request quota. Body, batch and source-backlog limits still apply. On 429, respect `Retry-After` and add backoff/jitter.
 - Preserve record IDs for metric retries. Preserve `(collection, key)` and current revision for documents. A new ID is new data, not a retry.
-- Errors from the Warehouse application are JSON: `{"error":"message"}`. A gateway can return a different response before the request reaches Warehouse.
+- Errors from the zbucket application are JSON: `{"error":"message"}`. A gateway can return a different response before the request reaches zbucket.
 
 | Status | Meaning and next action |
 | --- | --- |

@@ -6,7 +6,7 @@ const demo=JSON.parse(await readFile('experiments/metrics/app-demo/data.json','u
 async function call(path:string,body?:unknown){const r=await fetch(origin+'/api/v1/metrics/'+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const data=await r.json();assert(r.ok,JSON.stringify(data));return data;}
 const scope=demo.scope,day=(value:string)=>value.slice(0,10)+'T00:00:00.000Z';
 const {metric}=await call('event-processing',{...scope,key:'orbit_daily_events',name:'Orbit · Daily app events',includeHistory:true});
-let job;for(let attempt=0;attempt<60;attempt++){job=(await call('event-processing')).jobs.find((j:{metric_id:string})=>j.metric_id===metric.id);if(job.status==='completed')break;await new Promise(r=>setTimeout(r,1000));}assert.equal(job.status,'completed','Run the Warehouse worker to finish processing history.');assert.equal(Number(job.inserted),25);
+let job;for(let attempt=0;attempt<60;attempt++){job=(await call('event-processing')).jobs.find((j:{metric_id:string})=>j.metric_id===metric.id);if(job.status==='completed')break;await new Promise(r=>setTimeout(r,1000));}assert.equal(job.status,'completed','Run the zbucket worker to finish processing history.');assert.equal(Number(job.inserted),25);
 const dailyQuery={metricId:metric.id,startsAt:day(scope.startsAt),endsAt:day(scope.endsAt),interval:'day',groupBy:['name']};
 const daily=await call('query',dailyQuery);assert.equal(Number(daily.value),25);
 const existing=await call('library');

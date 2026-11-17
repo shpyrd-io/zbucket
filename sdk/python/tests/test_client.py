@@ -1,4 +1,5 @@
 import json
+import os
 import threading
 import unittest
 from datetime import datetime, timezone
@@ -6,7 +7,7 @@ from decimal import Decimal
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from unittest.mock import patch
 
-from shpyrd_warehouse import IngestionFailed, WarehouseClient, WarehouseError, WarehouseTransportError
+from shpyrd_zbucket import IngestionFailed, ZbucketClient, ZbucketError, ZbucketTransportError
 
 TOKEN = "wh_" + "a" * 43
 
@@ -46,10 +47,27 @@ class ClientTests(unittest.TestCase):
     def setUp(self):
         self.server.responses = []
         self.server.requests = []
-        self.client = WarehouseClient(self.origin, TOKEN, max_retries=1)
+        self.client = ZbucketClient(self.origin, TOKEN, max_retries=1)
 
     def reply(self, payload, status=200, **headers):
         self.server.responses.append((status, headers, payload))
+
+    def test_rename_aliases_and_environment_precedence(self):
+        from shpyrd_warehouse import WarehouseClient, WarehouseError
+        from shpyrd_warehouse.client import WarehouseTransportError
+        self.assertIs(WarehouseClient, ZbucketClient)
+        self.assertIs(WarehouseError, ZbucketError)
+        self.assertIs(WarehouseTransportError, ZbucketTransportError)
+        old = {"WAREHOUSE_URL": self.origin, "WAREHOUSE_TOKEN": TOKEN}
+        with patch.dict(os.environ, old, clear=True):
+            self.assertEqual(WarehouseClient.from_env().base_url, self.origin)
+        new = {**old, "ZBUCKET_URL": "https://zbucket.example", "ZBUCKET_TOKEN": TOKEN,
+               "WAREHOUSE_ALLOW_INTERNAL_HTTP": "1", "ZBUCKET_ALLOW_INTERNAL_HTTP": "0"}
+        with patch.dict(os.environ, new, clear=True):
+            self.assertEqual(ZbucketClient.from_env().base_url, "https://zbucket.example")
+            os.environ["ZBUCKET_URL"] = "http://web.project.svc.cluster.local"
+            with self.assertRaises(ValueError):
+                ZbucketClient.from_env()
 
     def body(self):
         return json.loads(self.server.requests[-1][3])
@@ -86,27 +104,27 @@ class ClientTests(unittest.TestCase):
 
     def test_no_redirect_credential_forwarding(self):
         self.reply({}, 302, Location=self.origin + "/login")
-        with self.assertRaises(WarehouseError) as raised:
+        with self.assertRaises(ZbucketError) as raised:
             self.client.metrics.catalog()
         self.assertEqual(raised.exception.status, 302)
         self.assertEqual(len(self.server.requests), 1)
 
     def test_html_gateway_response_is_explicit(self):
         self.reply(b"<html>Login</html>", **{"Content-Type": "text/html"})
-        with self.assertRaisesRegex(WarehouseTransportError, "gateway"):
+        with self.assertRaisesRegex(ZbucketTransportError, "gateway"):
             self.client.metrics.catalog()
 
     def test_origin_policy(self):
         for url in ("http://example.com", "https://user:pass@example.com", "https://example.com/api/v1",
                     "https://example.com?q=1", "https://example.com/#token", "ftp://example.com"):
             with self.subTest(url=url), self.assertRaises(ValueError):
-                WarehouseClient(url, TOKEN)
+                ZbucketClient(url, TOKEN)
         internal = "http://web.p-example.svc.cluster.local"
         with self.assertRaises(ValueError):
-            WarehouseClient(internal, TOKEN)
-        self.assertEqual(WarehouseClient(internal, TOKEN, allow_internal_http=True).base_url, internal)
+            ZbucketClient(internal, TOKEN)
+        self.assertEqual(ZbucketClient(internal, TOKEN, allow_internal_http=True).base_url, internal)
         with self.assertRaises(ValueError):
-            WarehouseClient("http://public.example.com", TOKEN, allow_internal_http=True)
+            ZbucketClient("http://public.example.com", TOKEN, allow_internal_http=True)
 
     def test_batch_and_request_budgets(self):
         for records in ([], [{}], [{"measurementId": "x"}] * 1001):
@@ -118,7 +136,7 @@ class ClientTests(unittest.TestCase):
             self.client.metrics.measurements([{"measurementId": "x"}], idempotency_key="x\r\nInjected: yes")
         self.assertEqual(self.server.requests, [])
 
-    @patch("shpyrd_warehouse.client.time.sleep")
+    @patch("shpyrd_zbucket.client.time.sleep")
     def test_rate_limit_respected_with_same_payload(self, sleep):
         self.reply({"error": "Wait"}, 429, **{"Retry-After": "7"})
         self.reply({"id": "r", "status": "accepted"}, 202)
@@ -126,17 +144,17 @@ class ClientTests(unittest.TestCase):
         sleep.assert_called_once_with(7)
         self.assertEqual(self.server.requests[0][3], self.server.requests[1][3])
 
-    @patch("shpyrd_warehouse.client.time.sleep")
+    @patch("shpyrd_zbucket.client.time.sleep")
     def test_long_retry_after_is_returned(self, sleep):
         self.reply({"error": "Wait"}, 429, **{"Retry-After": "120"})
-        with self.assertRaises(WarehouseError) as raised:
+        with self.assertRaises(ZbucketError) as raised:
             self.client.metrics.catalog()
         self.assertEqual(raised.exception.retry_after, 120)
         sleep.assert_not_called()
 
     def test_permission_errors_do_not_retry_and_redact(self):
         self.reply({"error": "Denied " + TOKEN}, 403)
-        with self.assertRaises(WarehouseError) as raised:
+        with self.assertRaises(ZbucketError) as raised:
             self.client.metrics.catalog()
         self.assertEqual(raised.exception.status, 403)
         self.assertNotIn(TOKEN, str(raised.exception))
@@ -155,18 +173,18 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(self.server.requests[-1][:2], ("DELETE", "/api/v1/metrics/definitions/x"))
         self.assertEqual(self.body(), {"expectedRevision": 2})
 
-    @patch("shpyrd_warehouse.client.time.sleep")
+    @patch("shpyrd_zbucket.client.time.sleep")
     def test_non_idempotent_mutations_do_not_auto_retry(self, sleep):
         for operation in (lambda: self.client.metrics.update("x", expected_revision=1, changes={"name": "x"}),
                           lambda: self.client.knowledge.save({"title": "x"}),
                           lambda: self.client.metrics.query({"metricId": "x", "snapshot": True})):
             self.reply({"error": "unavailable"}, 503)
-            with self.assertRaises(WarehouseError):
+            with self.assertRaises(ZbucketError):
                 operation()
         self.assertEqual(len(self.server.requests), 3)
         sleep.assert_not_called()
 
-    @patch("shpyrd_warehouse.client.time.sleep")
+    @patch("shpyrd_zbucket.client.time.sleep")
     def test_ingestion_wait_complete_and_failure(self, _sleep):
         self.reply({"id": "r", "status": "accepted"})
         self.reply({"id": "r", "status": "completed"})

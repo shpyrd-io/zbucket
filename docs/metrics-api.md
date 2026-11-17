@@ -11,18 +11,18 @@ index: true
 
 # Metrics API specification and examples
 
-Use this guide to define, publish and query measurements. All examples are fictional. They assume an authorized API origin in `WAREHOUSE_URL` and a scoped `wh_` credential in `WAREHOUSE_TOKEN`; see **Integrating an application with Warehouse** for gateway access and permissions. A Shpyrd browser login and a Warehouse application token are different credentials.
+Use this guide to define, publish and query measurements. All examples are fictional. They assume an authorized API origin in `ZBUCKET_URL` and a scoped `wh_` credential in `ZBUCKET_TOKEN`; see **Integrating an application with zbucket** for gateway access and permissions. A Shpyrd browser login and a zbucket application token are different credentials.
 
 ## Internal API origin
 
-For this Warehouse installation, execute the examples from an allowed Shpyrd project using:
+For this zbucket installation, execute the examples from an allowed Shpyrd project using:
 
 ```sh
-export WAREHOUSE_URL='http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local'
-# Inject WAREHOUSE_TOKEN from the caller's secret store (wh_…).
+export ZBUCKET_URL='http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local'
+# Inject ZBUCKET_TOKEN from the caller's secret store (wh_…).
 ```
 
-An administrator must authorize the caller with `shpyrd allow add project <caller-project> --project warehouse`. The HTTP service is internal to the cluster. The public HTTPS hostname is for browser login and does not accept a Warehouse token as a substitute for Shpyrd sign-in. Neither the internal URL nor network permission replaces the API token and its grants.
+An administrator must authorize the caller with `shpyrd allow add project <caller-project> --project warehouse`. The HTTP service is internal to the cluster. The public HTTPS hostname is for browser login and does not accept a zbucket token as a substitute for Shpyrd sign-in. Neither the internal URL nor network permission replaces the API token and its grants.
 
 ## Three independent decisions
 
@@ -121,7 +121,7 @@ For a new concept, currency, reducer, publisher, dimensions or resolution/retent
 
 ## Auto-publish metric definitions: application API contract
 
-An administrator enables **Integrations → Permissions → Create and manage own metrics** (`metrics.manageOwn: true`). It is false by default. All requests below use `Authorization: Bearer $WAREHOUSE_TOKEN` with the same `wh_` credential as ingestion. The internal `WAREHOUSE_URL` is defined at the top of this guide. No separate definition-management secret is issued.
+An administrator enables **Integrations → Permissions → Create and manage own metrics** (`metrics.manageOwn: true`). It is false by default. All requests below use `Authorization: Bearer $ZBUCKET_TOKEN` with the same `wh_` credential as ingestion. The internal `ZBUCKET_URL` is defined at the top of this guide. No separate definition-management secret is issued.
 
 ### 1. Register the immutable contract
 
@@ -159,8 +159,8 @@ Save the following as `metric-definition.json`. This is a complete, executable r
 ```
 
 ```sh
-curl --fail-with-body "$WAREHOUSE_URL/api/v1/metrics/definitions" \
-  -H "Authorization: Bearer $WAREHOUSE_TOKEN" \
+curl --fail-with-body "$ZBUCKET_URL/api/v1/metrics/definitions" \
+  -H "Authorization: Bearer $ZBUCKET_TOKEN" \
   -H 'Content-Type: application/json' \
   --data-binary @metric-definition.json
 ```
@@ -171,7 +171,7 @@ curl --fail-with-body "$WAREHOUSE_URL/api/v1/metrics/definitions" \
 
 | Definition field | Required / default / accepted values |
 | --- | --- |
-| `key` | Required, unique across Warehouse; snake_case starting with a lowercase letter, up to 100 characters. Prefer an application prefix. |
+| `key` | Required, unique across zbucket; snake_case starting with a lowercase letter, up to 100 characters. Prefer an application prefix. |
 | `name` | Required, nonempty, up to 200 characters. |
 | `kind` | Required: `sum`, `count`, `latest`, `mean`, `ratio`, `min`, `max`, `distinct`, `p95`. See recipes below. |
 | `unit` | Required, nonempty, up to 40 characters; no implicit currency conversion. |
@@ -254,8 +254,8 @@ Read `GET /api/v1/metrics/definition/{key-or-id}` using a metric read grant. Use
 ```
 
 ```sh
-curl --fail-with-body -X PATCH "$WAREHOUSE_URL/api/v1/metrics/definitions/finance_cash_balance_brl" \
-  -H "Authorization: Bearer $WAREHOUSE_TOKEN" \
+curl --fail-with-body -X PATCH "$ZBUCKET_URL/api/v1/metrics/definitions/finance_cash_balance_brl" \
+  -H "Authorization: Bearer $ZBUCKET_TOKEN" \
   -H 'Content-Type: application/json' \
   --data-binary @metric-patch.json
 ```
@@ -267,8 +267,8 @@ curl --fail-with-body -X PATCH "$WAREHOUSE_URL/api/v1/metrics/definitions/financ
 `DELETE /api/v1/metrics/definitions/{key-or-id}`, JSON body `{"expectedRevision":2}` for a metric currently at revision 2.
 
 ```sh
-curl --fail-with-body -X DELETE "$WAREHOUSE_URL/api/v1/metrics/definitions/finance_cash_balance_brl" \
-  -H "Authorization: Bearer $WAREHOUSE_TOKEN" \
+curl --fail-with-body -X DELETE "$ZBUCKET_URL/api/v1/metrics/definitions/finance_cash_balance_brl" \
+  -H "Authorization: Bearer $ZBUCKET_TOKEN" \
   -H 'Content-Type: application/json' \
   --data '{"expectedRevision":2}'
 ```
@@ -303,15 +303,15 @@ Revoking `manageOwn` immediately blocks subsequent create/edit/delete requests; 
 
 `measurements` directly names a metric. `events` projects a registered dataset into one or more metrics. `aggregates` accepts **sufficient statistics for complete, nonoverlapping source intervals**; it cannot accept `latest`, scalar distinct counts or scalar percentiles. Never average already-computed averages or add per-group unique counts to get a global unique count. Exact distinct identities must be stable across groups for deduplication to mean the same thing.
 
-Cumulative counters must be transformed into reset-aware increments by the producer before using `sum`; Warehouse does not implement Prometheus-style counter reset/rate semantics. Cohorts, arbitrary formulas and joins across unrelated metrics are not implicit metric kinds. For CPC/CPA, provide spend and clicks/acquisitions together to a `ratio` metric if you want the correctly weighted result.
+Cumulative counters must be transformed into reset-aware increments by the producer before using `sum`; zbucket does not implement Prometheus-style counter reset/rate semantics. Cohorts, arbitrary formulas and joins across unrelated metrics are not implicit metric kinds. For CPC/CPA, provide spend and clicks/acquisitions together to a `ratio` metric if you want the correctly weighted result.
 
 ## Shared publishing conventions
 
 Save each JSON example below into a file and POST it to the specified route. For example, save the balance batch as `measurements.json`:
 
 ```sh
-curl --fail-with-body "$WAREHOUSE_URL/api/v1/metrics/measurements" \
-  -H "Authorization: Bearer $WAREHOUSE_TOKEN" \
+curl --fail-with-body "$ZBUCKET_URL/api/v1/metrics/measurements" \
+  -H "Authorization: Bearer $ZBUCKET_TOKEN" \
   -H "Content-Type: application/json" \
   --data-binary @measurements.json
 ```
@@ -359,7 +359,7 @@ Use the definition above. At exactly 10:00 local time two accounts are observed:
 
 These are **readings at 10:00**, not values retroactively assigned to 09:00–10:00. Query boundaries are start-inclusive/end-exclusive. The 10:00 reading contributes to the 10:00–11:00 interval and is eligible at its 11:00 boundary; it is excluded from a query ending exactly at 10:00. Do not subtract a millisecond to force it into the previous hour. If the source actually reports a closed interval, define that semantic explicitly before integration.
 
-For `latest`, the returned summary is the state at the query's end, not a sum of its hourly points. At a boundary Warehouse first selects each full dimension tuple's last eligible observation, then applies the query's cross-series `sum`, `mean`, `min` or `max`.
+For `latest`, the returned summary is the state at the query's end, not a sum of its hourly points. At a boundary zbucket first selects each full dimension tuple's last eligible observation, then applies the query's cross-series `sum`, `mean`, `min` or `max`.
 
 **Keep previous value** uses the last known eligible observation, possibly from before the query start if still retained, without creating fake observations. After `freshnessSeconds` it remains visible with `stale` quality and its observation timestamp. It never fills an earlier hour with a later reading. A tuple with no known prior value stays missing. **Leave gaps** suppresses an aggregate when required known tuples lack fresh values. Neither policy silently replaces unavailable balances with zero. Expected tuples come from known dimension sets, not a separate external bank-account registry.
 
@@ -467,8 +467,8 @@ The publisher needs write access to every resulting projection. A denied project
 Save as `events.json`, then send:
 
 ```sh
-curl --fail-with-body "$WAREHOUSE_URL/api/v1/metrics/events" \
-  -H "Authorization: Bearer $WAREHOUSE_TOKEN" \
+curl --fail-with-body "$ZBUCKET_URL/api/v1/metrics/events" \
+  -H "Authorization: Bearer $ZBUCKET_TOKEN" \
   -H "Content-Type: application/json" \
   --data-binary @events.json
 ```
@@ -524,8 +524,8 @@ A first batch normally returns:
 Poll:
 
 ```sh
-curl --fail-with-body "$WAREHOUSE_URL/api/v1/metrics/ingestions/$INGESTION_ID" \
-  -H "Authorization: Bearer $WAREHOUSE_TOKEN"
+curl --fail-with-body "$ZBUCKET_URL/api/v1/metrics/ingestions/$INGESTION_ID" \
+  -H "Authorization: Bearer $ZBUCKET_TOKEN"
 ```
 
 Proceed when `status` is `completed`. An all-duplicate batch may be completed immediately. Whole-batch idempotency replay can return `{id,status,duplicate:true}` instead of accepted/duplicate counts. A receipt reports submitted unique records; it is not the sum of their business values. Inspect the receipt's `error` and escalate a failed batch rather than creating new record IDs blindly. Only the submitting integration can read its receipts.
@@ -691,7 +691,7 @@ Snapshot metadata includes `observedAt`, `oldestObservedAt`, `knownCount`, `expe
 
 Add `"snapshot":true` to a successful query body to preserve its value, definition, quality, comparison and boundaries. GET `/metrics/snapshots/{snapshotId}` returns an integration-owned record whose `result` is the saved query response. Current read and dimension permissions are checked again. A live query/chart changes on refresh; a saved snapshot does not.
 
-Applications retrieve report data through POST `/metrics/query`, with the same permissions, pagination and query budgets. Warehouse does not generate or store downloadable export files.
+Applications retrieve report data through POST `/metrics/query`, with the same permissions, pagination and query budgets. zbucket does not generate or store downloadable export files.
 
 ## Resolution, retention and operational limits
 
@@ -954,7 +954,7 @@ The old engine can then serve raw queries; re-enable preprocessing only when
 ready for its full history rebuild. This prevents old code from treating compact
 snapshots or partially rebuilt projections as legacy results. No original
 events or metric definitions need to be removed. Run these commands
-against the intended Warehouse database only; a code rollback is not a database
+against the intended zbucket database only; a code rollback is not a database
 restore. Deployment to any external environment is a separate operation.
 
 Validation and load measurement:

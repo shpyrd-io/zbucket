@@ -3,9 +3,9 @@ import json
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-from shpyrd_warehouse import WarehouseClient, WarehouseError
+from shpyrd_zbucket import ZbucketClient, ZbucketError
 
-c = WarehouseClient.from_env(max_retries=0)
+c = ZbucketClient.from_env(max_retries=0)
 checks = []
 now = datetime.now(timezone.utc).replace(microsecond=0)
 start = now.replace(minute=0, second=0) - timedelta(hours=2)
@@ -48,7 +48,7 @@ assert 'sdk_empty' not in [m['key'] for m in c.metrics.iter_metrics()]
 try:
     c.metrics.delete('sdk_sales', expected_revision=2)
     raise AssertionError('Used metric was deleted')
-except WarehouseError as error:
+except ZbucketError as error:
     assert error.status == 409
 checks.append('Empty deletion, catalog and rejection of used-metric deletion')
 doc = c.knowledge.save({'collection': 'sample', 'key': 'feed', 'title': 'Pineapple feed runbook', 'content': '# Pineapple\n\nRetry with the same IDs.', 'source_type': 'runbook'})
@@ -61,7 +61,7 @@ assert changed['revision'] == 2
 try:
     c.knowledge.save({**doc, 'content': 'Conflicting stale content'})
     raise AssertionError('Stale revision was overwritten')
-except WarehouseError as error:
+except ZbucketError as error:
     assert error.status == 409
 archived = c.knowledge.archive(doc['id'], revision=2)
 assert not archived['active']

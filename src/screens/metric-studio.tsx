@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import {post} from "@/api/warehouse";
+import {post} from "@/api/zbucket";
 import {EventFunnelControls} from "@/components/event-funnel-controls";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";

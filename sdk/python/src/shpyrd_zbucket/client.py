@@ -17,16 +17,16 @@ from urllib.parse import quote, urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
-class WarehouseError(Exception):
+class ZbucketError(Exception):
     """An API error. Inspect status and retry_after without parsing message text."""
 
     def __init__(self, status: int, message: str, retry_after: float | None = None):
         self.status = status
         self.retry_after = retry_after
-        super().__init__(f"Warehouse HTTP {status}: {message}")
+        super().__init__(f"zbucket HTTP {status}: {message}")
 
 
-class WarehouseTransportError(Exception):
+class ZbucketTransportError(Exception):
     """No usable JSON response. A write may have succeeded; preserve record IDs."""
 
 
@@ -80,7 +80,7 @@ def _retry_after(value: str | None) -> float | None:
     return max(0.0, seconds) if math.isfinite(seconds) else None
 
 
-class WarehouseClient:
+class ZbucketClient:
     """Use a backend wh_ token and an origin URL (without /api/v1).
 
     HTTPS is required outside loopback. Explicit allow_internal_http permits
@@ -100,7 +100,7 @@ class WarehouseClient:
         if url.scheme == "http" and not (loopback or (allow_internal_http and internal)):
             raise ValueError("Use HTTPS, loopback, or explicitly allow a Kubernetes service origin.")
         if not re.fullmatch(r"wh_[A-Za-z0-9_-]{43}", token):
-            raise ValueError("Supply a valid Warehouse integration token (wh_…).")
+            raise ValueError("Supply a valid zbucket integration token (wh_…).")
         if not math.isfinite(timeout) or timeout <= 0 or not isinstance(max_retries, int) or not 0 <= max_retries <= 5:
             raise ValueError("timeout must be positive; max_retries must be an integer from 0 to 5.")
         self.base_url = base_url.rstrip("/")
@@ -112,13 +112,18 @@ class WarehouseClient:
         self.knowledge = Knowledge(self)
 
     @classmethod
-    def from_env(cls, **options: Any) -> WarehouseClient:
+    def from_env(cls, **options: Any) -> ZbucketClient:
         """Read environment variables only. Does not execute or auto-load .env files."""
-        options.setdefault("allow_internal_http", os.environ.get("WAREHOUSE_ALLOW_INTERNAL_HTTP") == "1")
-        return cls(os.environ["WAREHOUSE_URL"], os.environ["WAREHOUSE_TOKEN"], **options)
+        def setting(name: str) -> str:
+            if "ZBUCKET_" + name in os.environ:
+                return os.environ["ZBUCKET_" + name]
+            return os.environ["WAREHOUSE_" + name]
+
+        options.setdefault("allow_internal_http", os.environ.get("ZBUCKET_ALLOW_INTERNAL_HTTP", os.environ.get("WAREHOUSE_ALLOW_INTERNAL_HTTP")) == "1")
+        return cls(setting("URL"), setting("TOKEN"), **options)
 
     def __repr__(self) -> str:
-        return f"WarehouseClient(base_url={self.base_url!r}, token=<redacted>)"
+        return f"ZbucketClient(base_url={self.base_url!r}, token=<redacted>)"
 
     def _request(self, method: str, path: str, body: Mapping[str, Any] | None = None, *,
                  params: Mapping[str, Any] | None = None, retry_safe: bool = False,
@@ -127,13 +132,13 @@ class WarehouseClient:
         if params:
             url += "?" + urlencode({k: v for k, v in params.items() if v is not None})
         headers = {"Authorization": "Bearer " + self._token, "Accept": "application/json",
-                   "User-Agent": "shpyrd-warehouse-python/0.1.0"}
+                   "User-Agent": "shpyrd-zbucket-python/0.1.0"}
         payload = None
         if body is not None:
             payload = json.dumps(_json_value(body), ensure_ascii=False, allow_nan=False,
                                  separators=(",", ":")).encode("utf-8")
             if len(payload) > 5 * 1024 * 1024:
-                raise ValueError("Warehouse requests may not exceed 5 MiB.")
+                raise ValueError("zbucket requests may not exceed 5 MiB.")
             headers["Content-Type"] = "application/json"
         if idempotency_key is not None:
             if not idempotency_key or len(idempotency_key) > 200 or not idempotency_key.isascii() or any(ord(c) < 32 or ord(c) == 127 for c in idempotency_key):
@@ -143,7 +148,7 @@ class WarehouseClient:
         for attempt in range(attempts):
             remaining = self.timeout if deadline is None else min(self.timeout, deadline - time.monotonic())
             if remaining <= 0:
-                raise TimeoutError("Warehouse operation timed out.")
+                raise TimeoutError("zbucket operation timed out.")
             try:
                 request = Request(url, data=payload, headers=headers, method=method)
                 try:
@@ -156,9 +161,9 @@ class WarehouseClient:
                     delay = _retry_after(response.headers.get("Retry-After"))
                     raw = response.read(32 * 1024 * 1024 + 1)
                 if 300 <= status < 400:
-                    raise WarehouseError(status, "Redirect refused. Use the internal API or authenticated machine ingress.")
+                    raise ZbucketError(status, "Redirect refused. Use the internal API or authenticated machine ingress.")
                 if len(raw) > 32 * 1024 * 1024:
-                    raise WarehouseTransportError("Response exceeds 32 MiB; narrow the query or paginate.")
+                    raise ZbucketTransportError("Response exceeds 32 MiB; narrow the query or paginate.")
                 data: Any = None
                 if "application/json" in content_type or "+json" in content_type:
                     try:
@@ -167,11 +172,11 @@ class WarehouseClient:
                         pass
                 if status >= 400:
                     message = data.get("error", "Request failed.") if isinstance(data, dict) else "Non-JSON response; check API origin and gateway."
-                    raise WarehouseError(status, str(message).replace(self._token, "<redacted>"), delay)
+                    raise ZbucketError(status, str(message).replace(self._token, "<redacted>"), delay)
                 if not isinstance(data, dict):
-                    raise WarehouseTransportError("Expected a JSON object; check API origin and gateway.")
+                    raise ZbucketTransportError("Expected a JSON object; check API origin and gateway.")
                 return data
-            except WarehouseError as error:
+            except ZbucketError as error:
                 if error.status not in (429, 502, 503, 504) or attempt + 1 == attempts:
                     raise
                 delay = error.retry_after
@@ -179,17 +184,17 @@ class WarehouseClient:
                     raise  # Let the caller schedule a later retry; never ignore Retry-After.
             except (URLError, TimeoutError, OSError, HTTPException):
                 if attempt + 1 == attempts:
-                    raise WarehouseTransportError("Warehouse connection failed. Preserve record IDs before retrying a write.") from None
+                    raise ZbucketTransportError("zbucket connection failed. Preserve record IDs before retrying a write.") from None
                 delay = None
             pause = delay if delay is not None else min(2 ** attempt, 8) + random.uniform(0, 0.25)
             if deadline is not None and time.monotonic() + pause >= deadline:
-                raise TimeoutError("Warehouse operation timed out.")
+                raise TimeoutError("zbucket operation timed out.")
             time.sleep(pause)
         raise AssertionError("Unreachable")
 
 
 class Metrics:
-    def __init__(self, client: WarehouseClient):
+    def __init__(self, client: ZbucketClient):
         self._client = client
 
     def catalog(self, *, query: str = "", after: str | None = None) -> dict[str, Any]:
@@ -205,7 +210,7 @@ class Metrics:
             if not after:
                 return
             if after in seen:
-                raise WarehouseTransportError("Metric catalog returned a repeated pagination cursor.")
+                raise ZbucketTransportError("Metric catalog returned a repeated pagination cursor.")
             seen.add(after)
 
     def get(self, key_or_id: str) -> dict[str, Any]:
@@ -284,7 +289,7 @@ class Metrics:
 
 
 class Knowledge:
-    def __init__(self, client: WarehouseClient):
+    def __init__(self, client: ZbucketClient):
         self._client = client
 
     def list(self, *, collection: str | None = None, after: str | None = None) -> dict[str, Any]:
@@ -300,7 +305,7 @@ class Knowledge:
             if not after:
                 return
             if after in seen:
-                raise WarehouseTransportError("Document catalog returned a repeated pagination cursor.")
+                raise ZbucketTransportError("Document catalog returned a repeated pagination cursor.")
             seen.add(after)
 
     def search(self, query: str, *, collection: str | None = None) -> dict[str, Any]:
@@ -328,3 +333,8 @@ class Knowledge:
     def restore(self, document_id: str, *, revision: int, restore_revision: int, reason: str = "Restored by publisher") -> dict[str, Any]:
         return self._client._request("POST", "knowledge/documents/" + _segment(document_id),
                                     {"action": "restore", "revision": revision, "restoreRevision": restore_revision, "reason": reason})
+
+# Backward-compatible names share exception identity and request behavior.
+WarehouseClient = ZbucketClient
+WarehouseError = ZbucketError
+WarehouseTransportError = ZbucketTransportError

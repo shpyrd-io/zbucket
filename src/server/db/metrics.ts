@@ -5,7 +5,7 @@ import pg from 'pg';
 import {eventSchema} from '../metrics/event-storage';
 import { check } from '@/models/metrics/validation';
 export type MetricDb = pg.Pool;
-export function metricsConnection(url=process.env.DATABASE_URL){check(url?.startsWith('postgres'),'Metrics requires PostgreSQL.',503);return new pg.Pool({connectionString:url,max:3,application_name:'warehouse-metrics',statement_timeout:15000});}
+export function metricsConnection(url=process.env.DATABASE_URL){check(url?.startsWith('postgres'),'Metrics requires PostgreSQL.',503);return new pg.Pool({connectionString:url,max:3,application_name:'zbucket-metrics',statement_timeout:15000});}
 let pool:pg.Pool|undefined,ready:Promise<void>|undefined;
 export async function metricsDb(){pool??=metricsConnection();ready??=migrateMetrics(pool).catch(e=>{ready=undefined;throw e;});await ready;return pool;}
 export async function migrateMetrics(pool:pg.Pool){const c=await pool.connect();try{await c.query('BEGIN');await c.query("SELECT pg_advisory_xact_lock(hashtext('warehouse-metrics-migration'))");await c.query(`

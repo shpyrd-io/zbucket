@@ -1,7 +1,7 @@
 import { createRemoteJWKSet, jwtVerify, type JWTPayload, type JWTVerifyGetKey } from 'jose';
 import { requireRule } from '@/models/policy';
 export function accessMode() {
- const configured=process.env.WAREHOUSE_ACCESS;
+ const configured=process.env.ZBUCKET_ACCESS??process.env.WAREHOUSE_ACCESS;
  requireRule(!configured||['local','shpyrd'].includes(configured),'Invalid access mode.',503);
  const platform=!!(process.env.SHPYRD_ISSUER||process.env.SHPYRD_PROJECT||process.env.SHPYRD_WORKSPACE);
  if(platform||configured==='shpyrd')return 'shpyrd';

@@ -1,7 +1,7 @@
 import {retryAfterDelay,validProperties,type CaptureEvent,type Context,type Properties} from './shared.js';
 export type BrowserOptions={endpoint:string;pageviews?:boolean;flushIntervalMs?:number;onError?:(message:string)=>void};
 const SESSION_MS=30*60*1000,MAX_BYTES=40*1024;
-export class WarehouseBrowser {
+export class ZbucketBrowser {
  private options!:BrowserOptions;private context:Context|null=null;private queue:CaptureEvent[]=[];private serial=Promise.resolve();private timer:ReturnType<typeof setInterval>|undefined;private sending=false;private stopped=false;private retries=0;private nextAttempt=0;private storageKey='';private session={id:'',last:0};private lastPath='';private cleanups:(()=>void)[]=[];
  private error(message:string){this.options.onError?.(message);}
  private enqueue(work:()=>Promise<void>){const result=this.serial.then(work);this.serial=result.catch(e=>this.error(String(e)));return result;}
@@ -13,6 +13,7 @@ export class WarehouseBrowser {
  async init(options:BrowserOptions){
   if(this.timer)throw new Error('Analytics is already initialized.');
   const endpoint=new URL(options.endpoint,location.href);if(endpoint.origin!==location.origin)throw new Error('Use a same-origin analytics relay.');
+  // Keep the persisted namespace so existing opt-outs, sessions and queued IDs survive upgrades.
   this.options={...options,endpoint:endpoint.href};this.storageKey='warehouse:'+endpoint.pathname;this.stopped=false;
   try{this.stopped=localStorage.getItem(this.storageKey+':optout')==='1';}catch{}
   if(this.stopped)return;
@@ -59,4 +60,5 @@ export class WarehouseBrowser {
  optIn(){try{localStorage.removeItem(this.storageKey+':optout');}catch{}this.stopped=false;if(!this.timer)return this.init(this.options);return this.enqueue(()=>this.refresh());}
  destroy(){if(this.timer)clearInterval(this.timer);this.timer=undefined;this.cleanups.forEach(fn=>fn());this.cleanups=[];}
 }
-export const warehouse=new WarehouseBrowser();
+export const zbucket=new ZbucketBrowser();
+export {ZbucketBrowser as WarehouseBrowser,zbucket as warehouse};

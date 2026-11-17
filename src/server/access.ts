@@ -28,7 +28,7 @@ export async function authenticate(pool:pg.Pool,req:Request):Promise<Principal>{
   await pool.query('UPDATE warehouse_credentials SET last_used_at=now() WHERE id=$1',[r.credential_id]);
   return {kind:'integration',id:r.id,sourceId:r.source_id,credentialId:r.credential_id,permissions:permissions(r.permissions)};
  }
- check(!/^Bearer (?:ct[im]_|wh_)/i.test(token),'Use a Warehouse integration credential.',401);
+ check(!/^Bearer (?:ct[im]_|wh_)/i.test(token),'Use a zbucket integration credential.',401);
  if(accessMode()==='local'){
   check(!token,'Invalid application credential.',401);
   check(['localhost','127.0.0.1','[::1]'].includes(new URL(req.url).hostname),'Local access is restricted to loopback.',403);
@@ -39,7 +39,7 @@ export async function authenticate(pool:pg.Pool,req:Request):Promise<Principal>{
  return {kind:'user',id:r.id,name:identity.name,admin:identity.roles.includes('admin')};
 }
 export function human(p:Principal){check(p.kind==='user','A personal session is required.',403);return p;}
-export function admin(p:Principal){const u=human(p);check(u.admin,'Warehouse administrator access required.',403);return u;}
+export function admin(p:Principal){const u=human(p);check(u.admin,'zbucket administrator access required.',403);return u;}
 export function checkOrigin(req:Request,p:Principal){if(p.kind==='integration')return;const origin=req.headers.get('origin');check(!origin||origin===(process.env.APP_ORIGIN||new URL(req.url).origin),'Cross-origin request rejected.',403);check(req.headers.get('sec-fetch-site')!=='cross-site','Cross-site request rejected.',403);}
 export async function audit(pool:Pick<pg.Pool,'query'>,p:Principal,action:string,target:string,status=200){await pool.query('INSERT INTO warehouse_audit(id,actor_id,action,target,status) VALUES($1,$2,$3,$4,$5)',[uuid(),p.id,action.slice(0,160),target.slice(0,200),status]);}
 

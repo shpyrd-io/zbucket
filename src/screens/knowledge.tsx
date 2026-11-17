@@ -14,7 +14,7 @@ import {Tabs,TabsList,TabsTrigger,TabsContent} from '@shpyrd/ui/components/tabs'
 import {SelectControl} from '@/components/select-control';
 import {ShortcutHint} from '@/components/shortcut-hint';
 import {submitOnShortcut} from '@/components/form-shortcuts';
-import {get,post} from '@/api/warehouse';
+import {get,post} from '@/api/zbucket';
 import type {Document} from '@/server/knowledge';
 import {knowledgeDocumentPath,knowledgeDocumentEndpoint,type KnowledgeIdentity} from '@/models/knowledge-links';
 type List={documents:Document[];collections:{key:string;name:string}[];nextCursor?:string;mode:string;notice?:string};

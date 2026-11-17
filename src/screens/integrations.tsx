@@ -6,7 +6,7 @@ import {Input} from '@shpyrd/ui/components/input';
 import {Textarea} from '@shpyrd/ui/components/textarea';
 import {Badge} from '@shpyrd/ui/components/badge';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@shpyrd/ui/components/dialog';
-import {get,post} from '@/api/warehouse';
+import {get,post} from '@/api/zbucket';
 import {emptyPermissions,type Permissions} from '@/models/permissions';
 type App={id:string;name:string;source_id:string;active:boolean;revision:number;permissions:Permissions};
 type Settings={apps:App[];credentials:{id:string;app_id:string;expires_at:string;revoked_at:string|null;last_used_at:string|null}[];collections:{key:string;name:string}[];activity:{id:string;action:string;created_at:string;status:number}[]};

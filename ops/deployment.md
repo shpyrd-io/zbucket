@@ -1,6 +1,6 @@
 ---
 id: warehouse.deployment
-title: Deploying Warehouse on Shpyrd
+title: Deploying zbucket on Shpyrd
 sourceType: reference
 policyStatus: observed
 collection: warehouse
@@ -9,9 +9,14 @@ tags: [deployment, authentication, integrations, operations]
 index: false
 ---
 
-# Deploying Warehouse
+# Deploying zbucket
 
-The project is **Warehouse**, slug `warehouse`, at `https://platform-warehouse.shpyrd.app`. Exposure is external so the hostname is reachable from the internet. Access remains `authenticated`: only users admitted by Shpyrd can enter. Never switch the project to public to make integration credentials pass through its login gateway.
+The application is branded **zbucket**. The existing deployment still uses slug
+`warehouse` and hostname `https://platform-warehouse.shpyrd.app`; the code rename
+does not rename Shpyrd resources or DNS. Exposure is external so the hostname is
+reachable from the internet. Access remains `authenticated`: only users admitted
+by Shpyrd can enter. Never switch the project to public to make integration
+credentials pass through its login gateway. See [rename compatibility](renaming.md).
 
 ## Runtime and storage
 
@@ -23,16 +28,16 @@ The checked-in `.npmrc` uses `install-links=true` so the bundled, unmodified des
 
 ## Configuration
 
-- `WAREHOUSE_ACCESS=shpyrd` and `NODE_ENV=production`; Shpyrd supplies `SHPYRD_ISSUER`, `SHPYRD_PROJECT` and `SHPYRD_WORKSPACE`.
+- `ZBUCKET_ACCESS=shpyrd` and `NODE_ENV=production`; Shpyrd supplies `SHPYRD_ISSUER`, `SHPYRD_PROJECT` and `SHPYRD_WORKSPACE`.
 - `APP_ORIGIN=https://platform-warehouse.shpyrd.app` is the trusted browser origin for mutations behind the reverse proxy. Update it if the canonical hostname changes.
 - `VOYAGE_API_KEY` is a project secret. `VOYAGE_MODEL=voyage-4` is ordinary configuration. Voyage receives document chunks for indexing and search text for queries, with 1,024-dimensional embeddings. Credentials, metric measurements and the local environment file are not sent to Voyage.
 - Workspace-global config is disabled: this app does not use OpenRouter.
 
 ## Application integrations
 
-The public hostname is protected by Shpyrd's personal login. A Warehouse `wh_` credential alone cannot bypass that gateway. For another Shpyrd project, first authorize its network connection with `shpyrd allow add project <caller> --project warehouse`. Configure that caller with `http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local` (the cluster-only web service on port 80) and a `wh_` credential granting only its required metric keys and Knowledge collections. No callers are allowed automatically.
+The public hostname is protected by Shpyrd's personal login. A zbucket `wh_` credential alone cannot bypass that gateway. For another Shpyrd project, first authorize its network connection with `shpyrd allow add project <caller> --project warehouse`. Configure that caller with `http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local` (the cluster-only web service on port 80) and a `wh_` credential granting only its required metric keys and Knowledge collections. No callers are allowed automatically.
 
-An external producer needs an explicitly configured machine ingress that preserves its Authorization bearer while retaining Warehouse's permission checks. This deployment does not open an anonymous path through the human login gateway. Integration requests never create human users.
+An external producer needs an explicitly configured machine ingress that preserves its Authorization bearer while retaining zbucket's permission checks. This deployment does not open an anonymous path through the human login gateway. Integration requests never create human users.
 
 ## Release and verification
 

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {performance} from 'node:perf_hooks';
 import {writeFile} from 'node:fs/promises';
 const url=new URL(process.env.DATABASE_URL!);assert(['localhost','127.0.0.1','[::1]'].includes(url.hostname),'Local PostgreSQL only.');
-const schema='funnel_projections_'+Date.now(),root=new pg.Pool({connectionString:url.toString(),max:2});await root.query(`CREATE SCHEMA ${schema}`);url.searchParams.set('options',`-c search_path=${schema},public`);process.env.DATABASE_URL=url.toString();process.env.WAREHOUSE_ACCESS='local';delete process.env.VOYAGE_API_KEY;
+const schema='funnel_projections_'+Date.now(),root=new pg.Pool({connectionString:url.toString(),max:2});await root.query(`CREATE SCHEMA ${schema}`);url.searchParams.set('options',`-c search_path=${schema},public`);process.env.DATABASE_URL=url.toString();process.env.ZBUCKET_ACCESS='local';delete process.env.VOYAGE_API_KEY;
 const {GET,POST}=await import('../app/api/v1/[...operation]/route');const {database}=await import('../src/server/database');const {processMetricBatch}=await import('../src/server/metrics/worker');const {processFunnelRun}=await import('../src/server/metrics/funnel-runs');
 const {processFunnelProjection,reconcileFunnelSubscriptions,cleanFunnelProjections,setFunnelPreprocessing}=await import('../src/server/metrics/funnel-projections');const {prewarmFunnels}=await import('../src/server/metrics/funnel-prewarming');
 let pool:pg.Pool|undefined;const checks:string[]=[],report:Record<string,any>={at:new Date().toISOString(),scope:'Isolated local PostgreSQL; real API ingestion for correctness and incremental updates, synthetic published index fixture for load. No production capacity claim.'};

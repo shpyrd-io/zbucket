@@ -33,9 +33,9 @@ async function run(req:Request,ctx:Context){let principal:Principal|undefined;co
  if(principal.kind==='integration')await audit(pool,principal,req.method+' '+area+'/'+(op??''),id??'',status);
  if(result instanceof Response)return result;
  return Response.json(result,{status,headers:{'Cache-Control':'no-store'}});
- }catch(e){const code=(e as {code?:string})?.code,status=e instanceof DomainError?e.status:code==='23505'?409:code==='22P02'?400:500;const message=e instanceof DomainError?e.message:status===409?'This key or name already exists.':status===400?'Invalid identifier or value.':'Warehouse request failed.';
+ }catch(e){const code=(e as {code?:string})?.code,status=e instanceof DomainError?e.status:code==='23505'?409:code==='22P02'?400:500;const message=e instanceof DomainError?e.message:status===409?'This key or name already exists.':status===400?'Invalid identifier or value.':'zbucket request failed.';
  if(principal?.kind==='integration')try{await audit(await database(),principal,req.method+' '+parts.slice(0,2).join('/'),'',status);}catch{}
- if(status===500)console.error('Warehouse request failed:',e instanceof Error?e.name:'Unknown error');
+ if(status===500)console.error('zbucket request failed:',e instanceof Error?e.name:'Unknown error');
  return Response.json({error:message},{status,headers:{'Cache-Control':'no-store',...(status===429?{'Retry-After':'60'}:{})}});
  }}
 export const GET=run;export const POST=run;export const PATCH=run;export const DELETE=run;

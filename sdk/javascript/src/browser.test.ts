@@ -1,6 +1,6 @@
 import {it,expect,vi,afterEach} from 'vitest';
-import {WarehouseBrowser} from './browser';
-const instances:WarehouseBrowser[]=[];
+import {ZbucketBrowser,WarehouseBrowser,zbucket,warehouse} from './browser';
+const instances:ZbucketBrowser[]=[];
 function setup(){
  const data=new Map<string,string>();const storage={getItem:(k:string)=>data.get(k)??null,setItem:(k:string,v:string)=>{data.set(k,v);},removeItem:(k:string)=>data.delete(k)};
  vi.stubGlobal('sessionStorage',storage);vi.stubGlobal('localStorage',storage);
@@ -8,9 +8,20 @@ function setup(){
  vi.stubGlobal('window',new EventTarget());vi.stubGlobal('document',Object.assign(new EventTarget(),{visibilityState:'visible'}));
  let userId:string|null=null,accountId:string|null=null;const calls:any[]=[];let fail=false;
  vi.stubGlobal('fetch',vi.fn(async(_url:string,init:RequestInit)=>{const body=JSON.parse(String(init.body));if(body.action==='context')return Response.json({anonymousId:'anon:one',userId,accountId,token:'signed-'+accountId,expiresAt:Date.now()+86400000});calls.push(body);return new Response(null,{status:fail?503:202});}));
- const sdk=new WarehouseBrowser();instances.push(sdk);return {sdk,calls,fail:(v:boolean)=>{fail=v;},identity:(user:string,account:string)=>{userId='user:'+user;accountId=account;}};
+ const sdk=new ZbucketBrowser();instances.push(sdk);return {sdk,calls,fail:(v:boolean)=>{fail=v;},identity:(user:string,account:string)=>{userId='user:'+user;accountId=account;}};
 }
 afterEach(()=>{instances.splice(0).forEach(s=>s.destroy());vi.unstubAllGlobals();vi.useRealTimers();});
+it('preserves existing opt-outs and a single shared instance across both names',async()=>{
+ const s=setup();localStorage.setItem('warehouse:/analytics/events:optout','1');
+ expect(WarehouseBrowser).toBe(ZbucketBrowser);expect(warehouse).toBe(zbucket);
+ await s.sdk.init({endpoint:'/analytics/events'});await s.sdk.track('must_not_capture');await s.sdk.flush();
+ expect(fetch).not.toHaveBeenCalled();expect(s.calls).toHaveLength(0);
+});
+it('restores queued event IDs and identity from the previous persisted namespace',async()=>{
+ const s=setup();const event={eventId:'web:previous',occurredAt:new Date().toISOString(),name:'before_upgrade',sessionId:'previous-session',properties:{},context:{token:'previous-context'}};
+ sessionStorage.setItem('warehouse:/analytics/events',JSON.stringify({queue:[event],session:{id:'previous-session',last:Date.now()}}));
+ await s.sdk.init({endpoint:'/analytics/events'});await s.sdk.flush();expect(s.calls[0].events).toEqual([event]);
+});
 it('queues frozen identity, retains event IDs on retry, and excludes URL query strings',async()=>{
  vi.useFakeTimers();const s=setup();await s.sdk.init({endpoint:'/analytics/events',pageviews:true});await s.sdk.flush();s.identity('ana','acme');await s.sdk.identify('ana');await s.sdk.track('feature_used',{feature:'reports'});s.identity('ana','beta');await s.sdk.setAccount('beta');
  s.fail(true);await s.sdk.flush();expect(s.calls[0].events[0].properties).toEqual({path:'/home'});expect(s.calls[1].events[0].context.accountId).toBe('acme');

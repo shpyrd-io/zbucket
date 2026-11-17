@@ -1,6 +1,10 @@
-# Warehouse Python client
+# zbucket Python client
 
-Python 3.10+, synchronous, no runtime dependencies. Backend use only. Package name `shpyrd-warehouse`, import `shpyrd_warehouse`. This local package is not published to PyPI.
+Existing `shpyrd_warehouse` imports, class names and `WAREHOUSE_*` environment
+settings remain supported by this distribution. `ZBUCKET_*` settings take
+precedence when provided. See [rename compatibility](../../ops/renaming.md).
+
+Python 3.10+, synchronous, no runtime dependencies. Backend use only. Package name `shpyrd-zbucket`, import `shpyrd_zbucket`. This local package is not published to PyPI.
 
 ```sh
 python3 -m pip install ./sdk/python
@@ -11,15 +15,15 @@ npm run test:python-sdk
 
 ## Connection
 
-Use an origin, without `/api/v1`. Set `WAREHOUSE_URL` and `WAREHOUSE_TOKEN` in the consuming backend's secret manager. `WarehouseClient.from_env()` reads these variables; it never executes or loads `.env` files. `WAREHOUSE_ALLOW_INTERNAL_HTTP=1` explicitly permits an internal Kubernetes service origin. HTTPS is required elsewhere except loopback. TLS verification stays enabled and redirects are refused, including login redirects, so a token is never forwarded to another destination.
+Use an origin, without `/api/v1`. Set `ZBUCKET_URL` and `ZBUCKET_TOKEN` in the consuming backend's secret manager. `ZbucketClient.from_env()` reads these variables; it never executes or loads `.env` files. `ZBUCKET_ALLOW_INTERNAL_HTTP=1` explicitly permits an internal Kubernetes service origin. HTTPS is required elsewhere except loopback. TLS verification stays enabled and redirects are refused, including login redirects, so a token is never forwarded to another destination.
 
 For this installation, the internal origin is `http://web.p-996iywzafh9ur616c0nj6ykxh.svc.cluster.local`. The caller project also needs Shpyrd network authorization. The public browser hostname requires Shpyrd login and is not a machine API endpoint. For local development, use an authorized loopback-only `kubectl port-forward`; see the sibling `shpyrd-sample-warehouse-feed` project.
 
 ```python
 from decimal import Decimal
-from shpyrd_warehouse import WarehouseClient
+from shpyrd_zbucket import ZbucketClient
 
-client = WarehouseClient.from_env()
+client = ZbucketClient.from_env()
 registered = client.metrics.register({
     "key": "myapp_sales_brl", "name": "Sales · BRL", "kind": "sum",
     "unit": "BRL", "inputMode": "measurements", "dimensions": ["channel"],
@@ -44,7 +48,7 @@ Replace timestamps with your real observation/query instants. Registration needs
 
 ## API surface
 
-Bodies follow the Warehouse API contract's camelCase field names; Python method options use snake_case. Results retain the server's JSON keys, quality, pagination and provenance.
+Bodies follow the zbucket API contract's camelCase field names; Python method options use snake_case. Results retain the server's JSON keys, quality, pagination and provenance.
 
 | Operation | Method |
 | --- | --- |
@@ -91,7 +95,7 @@ restored = client.knowledge.restore(document["id"], revision=archived["revision"
                                     restore_revision=document["revision"])
 ```
 
-A save is full replacement, not partial PATCH: include content and metadata you intend to retain. Changes require the current document revision; conflicts are not automatically overwritten. Indexing is asynchronous; search reports `mode` and an optional fallback `notice`. The SDK does not send data directly to Voyage; the Warehouse worker/search service handles embeddings under its configuration.
+A save is full replacement, not partial PATCH: include content and metadata you intend to retain. Changes require the current document revision; conflicts are not automatically overwritten. Indexing is asynchronous; search reports `mode` and an optional fallback `notice`. The SDK does not send data directly to Voyage; the zbucket worker/search service handles embeddings under its configuration.
 
 ## Reliability and limits
 
@@ -99,7 +103,7 @@ A save is full replacement, not partial PATCH: include content and metadata you 
 - Each ingestion call accepts 1–1,000 records and up to 5 MiB. Batch explicitly and persist stable record IDs; the client does not generate them or silently split a transaction.
 - Registration, ID-stable ingestion and safe reads retry connection failures and HTTP 429/502/503/504 up to twice by default, using the exact payload. `Retry-After` is honored; delays above 60 seconds are returned for the caller to schedule. Configure `max_retries=0` for a job scheduler.
 - Metadata changes, document mutations, corrections, coverage, deletion and snapshot-producing queries are not automatically retried. Read the returned error/current revision and reconcile intentionally. A transport failure can mean the request committed but its response was lost.
-- `WarehouseError.status` and `.retry_after` expose API failures. `WarehouseTransportError` identifies connection/format failures. `IngestionFailed.receipt` contains the failed receipt. Timeout while polling is not cancellation; retain the receipt and poll it again.
+- `ZbucketError.status` and `.retry_after` expose API failures. `ZbucketTransportError` identifies connection/format failures. `IngestionFailed.receipt` contains the failed receipt. Timeout while polling is not cancellation; retain the receipt and poll it again.
 - Constructor `timeout` is a per-attempt network timeout (default 30s). Receipt polling has a separate bounded polling budget. Responses are capped at 32 MiB; narrow or paginate larger queries. No background polling, threads, scheduling, async client or administrative credential-management API is included.
 
 The source of truth for payloads remains [Metrics API](../../docs/metrics-api.md) and [Knowledge API](../../docs/knowledge-api.md).

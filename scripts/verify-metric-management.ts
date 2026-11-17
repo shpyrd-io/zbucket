@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {emptyPermissions} from '../src/models/permissions';
 const url=new URL(process.env.DATABASE_URL!),schema='warehouse_management_'+Date.now(),root=new pg.Pool({connectionString:url.toString()});
-await root.query(`CREATE SCHEMA ${schema}`);url.searchParams.set('options',`-c search_path=${schema},public`);process.env.DATABASE_URL=url.toString();process.env.WAREHOUSE_ACCESS='local';
+await root.query(`CREATE SCHEMA ${schema}`);url.searchParams.set('options',`-c search_path=${schema},public`);process.env.DATABASE_URL=url.toString();process.env.ZBUCKET_ACCESS='local';
 const routes=await import('../app/api/v1/[...operation]/route');
 const {database}=await import('../src/server/database');
 const {processMetricBatch}=await import('../src/server/metrics/worker');

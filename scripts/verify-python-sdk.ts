@@ -6,7 +6,7 @@ import {spawn} from 'node:child_process';
 import {resolve} from 'node:path';
 import {emptyPermissions} from '../src/models/permissions';
 const url=new URL(process.env.DATABASE_URL!),schema='warehouse_python_'+Date.now(),root=new pg.Pool({connectionString:url.toString()});
-await root.query(`CREATE SCHEMA ${schema}`);url.searchParams.set('options',`-c search_path=${schema},public`);process.env.DATABASE_URL=url.toString();process.env.WAREHOUSE_ACCESS='local';
+await root.query(`CREATE SCHEMA ${schema}`);url.searchParams.set('options',`-c search_path=${schema},public`);process.env.DATABASE_URL=url.toString();process.env.ZBUCKET_ACCESS='local';
 const routes=await import('../app/api/v1/[...operation]/route');
 const {database}=await import('../src/server/database');
 const {processMetricBatch}=await import('../src/server/metrics/worker');
@@ -26,7 +26,7 @@ try{
  const credential=await admin({action:'issue',id:app.id,days:1});
  await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));const address=server.address();if(!address||typeof address==='string')throw new Error('Missing test port');
  const status=await new Promise<number|null>((resolve,reject)=>{
-  const child=spawn(process.env.PYTHON||'python3',['sdk/python/tests/acceptance.py'],{env:{...process.env,PYTHONPATH:resolvePath(),WAREHOUSE_URL:`http://127.0.0.1:${address.port}`,WAREHOUSE_TOKEN:credential.secret},stdio:['ignore','pipe','pipe']});
+  const child=spawn(process.env.PYTHON||'python3',['sdk/python/tests/acceptance.py'],{env:{...process.env,PYTHONPATH:resolvePath(),ZBUCKET_URL:`http://127.0.0.1:${address.port}`,ZBUCKET_TOKEN:credential.secret},stdio:['ignore','pipe','pipe']});
   child.stdout.on('data',chunk=>process.stdout.write(String(chunk).replaceAll(credential.secret,'<redacted>')));child.stderr.on('data',chunk=>process.stderr.write(String(chunk).replaceAll(credential.secret,'<redacted>')));child.on('error',reject);child.on('close',resolve);
  });if(status!==0)throw new Error('Python SDK acceptance failed');
 }finally{

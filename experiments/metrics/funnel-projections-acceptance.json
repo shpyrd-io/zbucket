@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-16T16:53:28.076Z",
+  "at": "2026-11-17T01:06:49.196Z",
   "scope": "Isolated local PostgreSQL; real API ingestion for correctness and incremental updates, synthetic published index fixture for load. No production capacity claim.",
   "checks": [
     "Historical fill, shared definitions independent of period, cross-day and repeated attempts exactly match direct engine",
@@ -7,7 +7,9 @@
     "Concurrent ingestion during preprocessing remains queued and converges to the exact result",
     "Corrections and anonymous linking rebuild exact sequences; account identity stays at event time",
     "Definition revisions, proactive saved-period warming and permission checks on cached participants",
-    "Three-attempt failure limit, explicit retry, operational disable/enable rebuild and retained-history cleanup"
+    "Three-attempt failure limit, explicit retry, operational disable/enable rebuild and retained-history cleanup",
+    "Backfill resumes after rollback; writes behind its checkpoint and aliases spanning batches converge; rebuild generations exclude removed actors",
+    "Mixed filtered and unfiltered repeated steps do not reuse a single event occurrence"
   ],
   "completed": true,
   "cleanedUp": true

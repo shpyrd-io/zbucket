@@ -1,4 +1,8 @@
-# Warehouse
+# zbucket
+
+Previously named Warehouse. The product, SDKs and new configuration examples now
+use `zbucket`. See [rename compatibility](ops/renaming.md) for existing clients,
+persisted data and deployment identifiers.
 
 Shared **Metrics** and **Knowledge** for applications. Every consuming backend uses one integration identity with explicit read/write permissions.
 
@@ -9,7 +13,7 @@ Requires Node.js 24 and PostgreSQL with pgvector.
 ```sh
 npm ci
 cp .env.example .env
-# Set DATABASE_URL to a dedicated Warehouse database.
+# Set DATABASE_URL to a dedicated zbucket database.
 npm run db:migrate
 npm run knowledge:import
 npm run seed:demo
@@ -45,7 +49,7 @@ The indexed `docs/` directory contains three application-facing guides:
 - [Metrics API specification and recipes](docs/metrics-api.md)
 - [Knowledge API specification and recipes](docs/knowledge-api.md)
 
-`src/client/warehouse.ts` is a small server-side TypeScript client. [The Python client](sdk/python/README.md) supports metric registration, ingestion, queries and Knowledge publication/search/history using the same scoped integration credential. Install it with `python3 -m pip install ./sdk/python`. Internal operating instructions live in `ops/` and are not imported into Knowledge. The bundled importer archives only the explicitly retired documentation keys in `scripts/retired-knowledge.json`; it never removes arbitrary documents missing from a directory.
+`src/client/zbucket.ts` is a small server-side TypeScript client. [The Python client](sdk/python/README.md) supports metric registration, ingestion, queries and Knowledge publication/search/history using the same scoped integration credential. Install it with `python3 -m pip install ./sdk/python`. Internal operating instructions live in `ops/` and are not imported into Knowledge. The bundled importer archives only the explicitly retired documentation keys in `scripts/retired-knowledge.json`; it never removes arbitrary documents missing from a directory.
 
 ```sh
 npm run knowledge:import -- --dir=/absolute/docs/path --dry-run
