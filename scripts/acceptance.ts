@@ -16,9 +16,9 @@ try{
  await call('session');const pool=await database();
  await call('integrations',{action:'collection',key:'private',name:'Private CRM'});
  const grants={metrics:{read:['cash_balance_brl'],write:['cash_balance_brl'],dimensions:{},snapshots:true},knowledge:{readCollections:['general'],writeCollections:['general'],search:true,history:true,archive:true}};
- const tower=await call('integrations',{action:'create',name:'Control Tower',permissions:grants});
- const r=await call('integrations',{action:'issue',id:tower.id,days:30});const token=r.secret;assert.ok(token.startsWith('wh_'));
- const settings=await call('integrations'),app=settings.apps.find((a:{id:string})=>a.id===tower.id);
+ const publisher=await call('integrations',{action:'create',name:'zbucket publisher',permissions:grants});
+ const r=await call('integrations',{action:'issue',id:publisher.id,days:30});const token=r.secret;assert.ok(token.startsWith('wh_'));
+ const settings=await call('integrations'),app=settings.apps.find((a:{id:string})=>a.id===publisher.id);
  assert.equal((await pool.query('SELECT count(*) n FROM warehouse_credentials')).rows[0].n,'1');
  await call('metrics/sources',undefined,token,403);
  const metric=await call('metrics/definitions',{definition:{key:'cash_balance_brl',name:'Cash balance',kind:'latest',unit:'BRL',sourceId:app.source_id,inputMode:'measurements',dimensions:['account_id'],status:'active',timezone:'UTC',missingData:'keep_previous',storagePolicy:{baseResolution:'hour',baseRetentionDays:30,hourRetentionDays:30,dayRetentionDays:730,rawRetentionDays:null}}});
@@ -36,10 +36,10 @@ try{
  }
  assert.equal((await pool.query("SELECT to_regclass($1) AS name",[schema+'.metric_exports'])).rows[0].name,null);
  checks.push('Removed export creation, status, download and JSON attachment endpoints return 404 for users and integrations; no export queue is created');
- const doc=await call('knowledge/documents',{collection:'general',key:'tower/cash',title:'Cash balance integration',content:'# Cash balances\n\nCollect bank snapshots every hour.',tags:['banking']},token);
+ const doc=await call('knowledge/documents',{collection:'general',key:'zbucket/cash',title:'Cash balance integration',content:'# Cash balances\n\nCollect bank snapshots every hour.',tags:['banking']},token);
  assert.equal((await call('knowledge/documents/'+doc.id,undefined,token)).revision,1);
  checks.push('One integration credential publishes metrics and documents, reads data and receipts; no separate producer secret');
- const duplicate=await call('knowledge/documents',{collection:'general',key:'tower/cash',title:doc.title,content:doc.content,tags:doc.tags},token);assert.equal(duplicate.revision,1);
+ const duplicate=await call('knowledge/documents',{collection:'general',key:'zbucket/cash',title:doc.title,content:doc.content,tags:doc.tags},token);assert.equal(duplicate.revision,1);
  const edited=await call('knowledge/documents',{id:doc.id,revision:1,title:doc.title,content:'# Cash balances\n\nNew banking instructions.',tags:doc.tags},token);assert.equal(edited.revision,2);
  await call('knowledge/documents',{id:doc.id,revision:1,title:doc.title,content:'Stale change'},token,409);
  assert.equal((await call('knowledge/documents/'+doc.id+'/history',undefined,token)).versions.length,2);

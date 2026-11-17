@@ -58,7 +58,7 @@
     "model": "voyage-4"
   },
   "notes": [
-    "Dedicated new database; no Control Tower data or resources changed.",
+    "Dedicated new zbucket database; no other application's data or resources changed.",
     "Shpyrd edge login is required. Machine callers require explicitly authorized connectivity and a scoped wh_ credential."
   ]
 }

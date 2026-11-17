@@ -25,7 +25,7 @@ npm run dev
 
 Open http://localhost:4332. `dev` starts web and worker together. The local database created for this experiment is `shpyrd_warehouse`; the configured environment is ignored by Git. Voyage is enabled in this local experiment with explicit user authorization. Fresh installations must configure `VOYAGE_API_KEY` to enable semantic indexing/search; see the documented data sent to Voyage. The key stays in the ignored local environment file.
 
-**Dependencies:** `.npmrc` sets `install-links=true` to install the bundled design system as the local package recorded in the lockfile. Use `npm ci`; there are no runtime references to the Tower checkout.
+**Dependencies:** `.npmrc` sets `install-links=true` to install the bundled design system as the local package recorded in the lockfile. Use `npm ci`; no other project checkout is required.
 
 ## Explore
 
@@ -52,6 +52,8 @@ The indexed `docs/` directory contains three application-facing guides:
 - [Metrics API specification and recipes](docs/metrics-api.md)
 - [Knowledge API specification and recipes](docs/knowledge-api.md)
 
+The repository bundles zbucket documentation and fictional demo content. Documents authored in a running Knowledge instance are stored in PostgreSQL and are not included in Git.
+
 `src/client/zbucket.ts` is a small server-side TypeScript client. [The Python client](sdk/python/README.md) supports metric registration, ingestion, queries and Knowledge publication/search/history using the same scoped integration credential. Install it with `python3 -m pip install ./sdk/python`. Internal operating instructions live in `ops/` and are not imported into Knowledge. The bundled importer archives only the explicitly retired documentation keys in `scripts/retired-knowledge.json`; it never removes arbitrary documents missing from a directory.
 
 ```sh
@@ -69,7 +71,7 @@ npm run metrics:verify-purge
 npm run build
 ```
 
-Tests use synthetic data and isolated PostgreSQL schemas. `experiments/` contains test reports. See [Deployment](ops/deployment.md) for the authenticated Shpyrd deployment, dedicated database, worker, shared export storage and integration routing. No Tower data migration is performed.
+Tests use synthetic data and isolated PostgreSQL schemas. `experiments/` contains test reports. See [Deployment](ops/deployment.md) for the authenticated Shpyrd deployment, dedicated database, workers and integration routing.
 
 Browser event collection: [JavaScript SDK, versioned script and Next.js relay](sdk/javascript/README.md). Build with `npm run build:sdk`; the `wh_` credential stays in the application's backend.
 

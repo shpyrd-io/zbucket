@@ -2,8 +2,8 @@ import {expect,it} from 'vitest';
 import {knowledgeDocumentPath,knowledgeDocumentEndpoint} from './knowledge-links';
 
 it('uses collection-scoped stable identity rather than a title or UUID',()=>{
- expect(knowledgeDocumentPath({collection:'general',key:'copy_guidelines'})).toBe('/knowledge/general/copy_guidelines');
- expect(knowledgeDocumentPath({collection:'other',key:'copy_guidelines'})).not.toBe(knowledgeDocumentPath({collection:'general',key:'copy_guidelines'}));
+ expect(knowledgeDocumentPath({collection:'general',key:'zbucket-guide'})).toBe('/knowledge/general/zbucket-guide');
+ expect(knowledgeDocumentPath({collection:'other',key:'zbucket-guide'})).not.toBe(knowledgeDocumentPath({collection:'general',key:'zbucket-guide'}));
 });
 it.each(['bank/cash','a//b','/leading/trailing/','bank/../cash','two words','saldo?bank=1#total','literal%2Fvalue','ação','//example.com'])('preserves the exact key through a browser URL: %s',key=>{
  const url=new URL(knowledgeDocumentPath({collection:'finance',key}),'https://zbucket.example');

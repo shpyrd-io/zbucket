@@ -49,16 +49,16 @@ A document's stable identity is `(collection, key)`. Browser links and exact API
 
 ## Link or read by stable identity
 
-For collection `general` and key `copy_guidelines`, link to `/knowledge/general/copy_guidelines` on the browser origin. Browser sign-in and existing access rules still apply. API clients can resolve the same document without knowing its generated UUID:
+For collection `general` and key `zbucket-guide`, link to `/knowledge/general/zbucket-guide` on the browser origin. Browser sign-in and existing access rules still apply. API clients can resolve the same document without knowing its generated UUID:
 
 ```sh
 curl --fail-with-body -G "$ZBUCKET_URL/api/v1/knowledge/documents/by-key" \
   -H "Authorization: Bearer $ZBUCKET_TOKEN" \
   --data-urlencode 'collection=general' \
-  --data-urlencode 'key=copy_guidelines'
+  --data-urlencode 'key=zbucket-guide'
 ```
 
-Both parameters are required. The endpoint returns one document, uses an exact match (not semantic search), and returns 404 for missing documents or collections outside the caller's read grants. Append `/history` before the query string to read revisions with the history grant. The Python client offers `client.knowledge.get_by_key("general", "copy_guidelines")`; keep the returned `id` and `revision` for edits.
+Both parameters are required. The endpoint returns one document, uses an exact match (not semantic search), and returns 404 for missing documents or collections outside the caller's read grants. Append `/history` before the query string to read revisions with the history grant. The Python client offers `client.knowledge.get_by_key("general", "zbucket-guide")`; keep the returned `id` and `revision` for edits.
 
 Archived documents stay absent from catalog/search but remain readable through an authorized direct UUID or stable link, as before. These are links to the current document; use revision history when referring to an older version.
 
