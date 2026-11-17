@@ -40,7 +40,13 @@ export async function authenticate(pool:pg.Pool,req:Request):Promise<Principal>{
 }
 export function human(p:Principal){check(p.kind==='user','A personal session is required.',403);return p;}
 export function admin(p:Principal){const u=human(p);check(u.admin,'zbucket administrator access required.',403);return u;}
-export function checkOrigin(req:Request,p:Principal){if(p.kind==='integration')return;const origin=req.headers.get('origin');check(!origin||origin===(process.env.APP_ORIGIN||new URL(req.url).origin),'Cross-origin request rejected.',403);check(req.headers.get('sec-fetch-site')!=='cross-site','Cross-site request rejected.',403);}
+export function checkOrigin(req:Request,p:Principal){if(p.kind==='integration')return;const origin=req.headers.get('origin');check(!origin||allowedOrigin(origin,req),'Cross-origin request rejected.',403);check(req.headers.get('sec-fetch-site')!=='cross-site','Cross-site request rejected.',403);}
+// The browser origin a mutation may come from: APP_ORIGIN when it is configured. Without it,
+// an origin whose host is the request's own Host header. Behind Shpyrd's edge the Host is the
+// public hostname while the hop to the application is plain HTTP, so the request URL's origin
+// differs from the browser's by scheme alone; a cross-site page cannot choose the Host header,
+// so comparing hosts is as strict as a configured origin. Forwarded headers are not consulted.
+function allowedOrigin(origin:string,req:Request){const configured=process.env.APP_ORIGIN;if(configured)return origin===configured;const host=req.headers.get('host')??new URL(req.url).host;try{return new URL(origin).host===host;}catch{return false;}}
 export async function audit(pool:Pick<pg.Pool,'query'>,p:Principal,action:string,target:string,status=200){await pool.query('INSERT INTO warehouse_audit(id,actor_id,action,target,status) VALUES($1,$2,$3,$4,$5)',[uuid(),p.id,action.slice(0,160),target.slice(0,200),status]);}
 
 // Count submitted events (including retries) atomically across all replicas/credentials.

@@ -33,7 +33,7 @@ while running npm scripts, which breaks Next.js production prerendering.
 ## Configuration
 
 - `ZBUCKET_ACCESS=shpyrd` and `NODE_ENV=production`; Shpyrd supplies `SHPYRD_ISSUER`, `SHPYRD_PROJECT` and `SHPYRD_WORKSPACE`.
-- `APP_ORIGIN=https://platform-warehouse.shpyrd.app` is the trusted browser origin for mutations behind the reverse proxy. Update it if the canonical hostname changes.
+- `APP_ORIGIN=https://platform-warehouse.shpyrd.app` is the trusted browser origin for mutations behind the reverse proxy. It is optional: without it, a mutation is accepted from the origin whose host is the request's own `Host` header, which Shpyrd's edge sets to the public hostname. Set it when the application must answer one hostname only.
 - `VOYAGE_API_KEY` is a project secret. `VOYAGE_MODEL=voyage-4` is ordinary configuration. Voyage receives document chunks for indexing and search text for queries, with 1,024-dimensional embeddings. Credentials, metric measurements and the local environment file are not sent to Voyage.
 - Workspace-global config is disabled: this app does not use OpenRouter.
 
