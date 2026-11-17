@@ -20,7 +20,7 @@ credentials pass through its login gateway. See [rename compatibility](renaming.
 
 ## Runtime and storage
 
-`shpyrd.yaml` defines a `shared-l` web process and a `shared-m` worker. The web process reads the injected `PORT`. The worker handles metric ingestion, retention and Voyage indexing. The release phase migrates the database and imports this repository's documentation before rollout. Synthetic metrics and local users are not deployed or seeded.
+`shpyrd.yaml` defines a `shared-l` web process and two `shared-m` background processes. The web process reads the injected `PORT`. The `worker` process handles metric ingestion, retention and Voyage indexing; `funnels` processes durable funnel runs, incremental preprocessing and saved-period warming. Both commands are declared in `Procfile`. The release phase migrates the database and imports this repository's documentation before rollout. Synthetic metrics and local users are not deployed or seeded.
 
 PostgreSQL 17 has pgvector, its own 5 GiB disk, a `shared-l` instance and daily backups with continuous WAL archiving retained for seven days. It is attached as `DATABASE_URL`. Web and worker have no persistent filesystem volumes. Metric data, saved evidence and documents are stored in PostgreSQL; API clients retrieve data through JSON queries. There is no file export queue or server-side download storage.
 
@@ -41,6 +41,26 @@ An external producer needs an explicitly configured machine ingress that preserv
 
 ## Release and verification
 
-Run lint, typecheck, unit tests, PostgreSQL acceptance and build before `shpyrd deploy --project warehouse`. Deployment uses the committed tree. Secrets and local data remain excluded. Verify `/api/health` within the app's network, the worker logs, a real personal sign-in, browser API reads and mutations, and indexed documentation. Verify an integration using its authorized internal connection when that consuming project is configured.
+Run lint, typecheck, unit tests, PostgreSQL acceptance and build before publishing
+changes to `main`. The project follows the public GitHub repository
+`https://github.com/shpyrd-io/zbucket.git`, branch `main`. New commits on that branch
+can trigger production builds and deployments; validate changes before pushing.
+
+To attach this source to the existing project, run from this checkout:
+
+```sh
+SHPYRD_URL=https://platform.shpyrd.cloud shpyrd deploy \
+  --project warehouse --git https://github.com/shpyrd-io/zbucket.git --ref main
+```
+
+The command starts a build and rollout, retaining the existing project's database,
+credentials and access policy. The workspace override avoids deploying to another
+signed-in workspace. A plain `shpyrd deploy` uploads the local committed tree and
+changes the source back to an archive; keep using the Git source for this project.
+Secrets and local data remain excluded. Verify `/api/health` within the app's
+network, readiness and logs for `web`, `worker` and `funnels`, a real personal
+sign-in, browser API reads and mutations, and indexed documentation. Verify an
+integration using its authorized internal connection when that consuming project
+is configured.
 
 Use `shpyrd projects info warehouse`, `shpyrd logs --project warehouse`, `shpyrd pg info db --project warehouse` and `shpyrd volumes list --project warehouse` to inspect the deployment. Releases can be rolled back with `shpyrd rollback --project warehouse`; review schema compatibility before rolling code back.

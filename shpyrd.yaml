@@ -21,3 +21,5 @@ processes:
       gracePeriod: 90s
   worker:
     size: shared-m
+  funnels:
+    size: shared-m

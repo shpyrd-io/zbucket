@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-17T01:06:31.151Z",
+  "at": "2026-11-17T01:44:39.057Z",
   "checks": [
     "Existing events endpoint accepts event-only datasets; durable retries and publication rollback preserve one event",
     "Default deny, own-source isolation, independent dataset grants and permission narrowing",
@@ -13,8 +13,8 @@
     "Independent event request and volume quotas, concurrent admission, shared credentials and next-window recovery"
   ],
   "timings": {
-    "ingestAndProcess1000Ms": 1326.2691250000007,
-    "timeline100Ms": 73.8789999999999
+    "ingestAndProcess1000Ms": 3166.4581670000007,
+    "timeline100Ms": 69.77366600000096
   },
   "scope": "Isolated synthetic PostgreSQL schema; no production load claim"
 }

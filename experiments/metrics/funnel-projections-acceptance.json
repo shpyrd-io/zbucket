@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-17T01:06:49.196Z",
+  "at": "2026-11-17T01:44:50.458Z",
   "scope": "Isolated local PostgreSQL; real API ingestion for correctness and incremental updates, synthetic published index fixture for load. No production capacity claim.",
   "checks": [
     "Historical fill, shared definitions independent of period, cross-day and repeated attempts exactly match direct engine",
