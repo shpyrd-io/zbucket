@@ -11,6 +11,7 @@ env:
 build:
   stack: full
   env:
+    NODE_ENV: production
     BP_NODE_VERSION: "24.*"
     BP_NODE_RUN_SCRIPTS: build
 processes:

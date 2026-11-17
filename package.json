@@ -8,7 +8,7 @@
     "start": "next start -p ${PORT:-3000}",
     "build:sdk": "node sdk/javascript/build.mjs",
     "prebuild": "npm run build:sdk",
-    "build": "NEXT_TELEMETRY_DISABLED=1 next build --webpack",
+    "build": "NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 next build --webpack",
     "lint": "oxlint src app scripts sdk/javascript/src examples",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -38,7 +38,7 @@
     "@tanstack/react-query": "^5.103.2",
     "jose": "^6.2.12",
     "lucide-react": "^1.47.0",
-    "next": "^16.3.7",
+    "next": "16.4.6",
     "pg": "^8.23.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -56,10 +56,10 @@
     "@types/pg": "^8.23.1",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
+    "esbuild": "0.28.2",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
-    "vitest": "^5.0.2",
-    "esbuild": "0.28.2"
+    "vitest": "^5.0.2"
   },
   "engines": {
     "node": "24.x"

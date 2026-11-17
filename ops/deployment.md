@@ -26,6 +26,10 @@ PostgreSQL 17 has pgvector, its own 5 GiB disk, a `shared-l` instance and daily 
 
 The checked-in `.npmrc` uses `install-links=true` so the bundled, unmodified design system installs as the local package recorded in `package-lock.json`. Run `npm ci` for a reproducible clean installation.
 
+The build command explicitly sets `NODE_ENV=production`, as does the build
+environment in `shpyrd.yaml`. Buildpacks can otherwise set it to `development`
+while running npm scripts, which breaks Next.js production prerendering.
+
 ## Configuration
 
 - `ZBUCKET_ACCESS=shpyrd` and `NODE_ENV=production`; Shpyrd supplies `SHPYRD_ISSUER`, `SHPYRD_PROJECT` and `SHPYRD_WORKSPACE`.

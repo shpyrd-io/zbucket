@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-17T01:44:44.619Z",
+  "at": "2026-11-17T01:52:36.238Z",
   "scope": "Isolated local PostgreSQL. Functional API acceptance plus synthetic published index load; no production network or concurrent ingestion benchmark.",
   "checks": [
     "Exact cross-day sequence, repeated starts, inclusive window, typed filters, batch boundaries, durable queue and concurrent deduplication",
